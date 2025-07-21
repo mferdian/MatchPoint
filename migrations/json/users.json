@@ -1,0 +1,47 @@
+[
+  {
+    "user_id": "c0a801a1-7c9e-4f20-98b1-1234567890ab",
+    "name": "Michael",
+    "email": "michael01@gmail.com",
+    "password": "password123",
+    "no_telp": "081234567890",
+    "address": "Jl. Merdeka No. 1, Jakarta",
+    "role": "admin"
+  },
+  {
+    "user_id": "d2b943c5-4f0a-4c96-bcf1-abcdef123456",
+    "name": "Jessica",
+    "email": "jessica99@gmail.com",
+    "password": "securepass456",
+    "no_telp": "082345678901",
+    "address": "Jl. Sudirman No. 2, Bandung",
+    "role": "admin"
+  },
+  {
+    "user_id": "e1a5f6d3-9b8c-4d2a-b8d0-fedcba654321",
+    "name": "Andi",
+    "email": "andi88@gmail.com",
+    "password": "userpass123",
+    "no_telp": "081122334455",
+    "address": "Jl. Gatot Subroto No. 3, Surabaya",
+    "role": "user"
+  },
+  {
+    "user_id": "f7c6b5a4-2e1d-4c3b-9f8a-bbccaaff0011",
+    "name": "Siti",
+    "email": "siti77@gmail.com",
+    "password": "userpass456",
+    "no_telp": "082233445566",
+    "address": "Jl. Diponegoro No. 4, Yogyakarta",
+    "role": "user"
+  },
+  {
+    "user_id": "a9b8c7d6-5e4f-3a2b-1c0d-998877665544",
+    "name": "Budi",
+    "email": "budi66@gmail.com",
+    "password": "userpass789",
+    "no_telp": "083344556677",
+    "address": "Jl. Asia Afrika No. 5, Medan",
+    "role": "user"
+  }
+]
