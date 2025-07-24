@@ -34,15 +34,21 @@ func main() {
 	var (
 		jwtService = service.NewJWTService()
 
-		userRepo    = repository.NewUserRepository(db)
-		userService = service.NewUserService(userRepo, jwtService)
+		userRepo       = repository.NewUserRepository(db)
+		userService    = service.NewUserService(userRepo, jwtService)
 		userController = controller.NewUserController(userService)
+
+		categoryRepo       = repository.NewCategoryRepository(db)
+		categoryService    = service.NewCategoryService(categoryRepo)
+		categoryController = controller.NewCategoryController(categoryService)
 	)
 
 	server := gin.Default()
 	server.Use(middleware.CORSMiddleware())
 
-	routes.User(server, userController, jwtService)
+	routes.PublicRoutes(server, userController)
+	routes.UserRoutes(server, userController, categoryController, jwtService)
+	routes.AdminRoutes(server, userController, categoryController, jwtService)
 
 	server.Static("/assets", "./assets")
 

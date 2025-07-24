@@ -9,7 +9,7 @@ import (
 
 func AuthorizeRole(allowedRoles ...string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userRole, ok := c.Get("Role")
+		userRole, ok := c.Get("role")
 		if !ok {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 				"status":  false,

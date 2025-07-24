@@ -14,8 +14,9 @@ import (
 type (
 	IUserService interface {
 		CreateUser(ctx context.Context, req dto.CreateUserRequest) (dto.UserResponse, error)
-		ReadUserByEmail(ctx context.Context, req dto.LoginUserRequest) (dto.LoginResponse, error)
-		ReadAllUserWithPagination(ctx context.Context, req dto.UserPaginationRequest) (dto.UserPaginationResponse, error)
+		GetUserByEmail(ctx context.Context, req dto.LoginUserRequest) (dto.LoginResponse, error)
+		GetuserByID(ctx context.Context, userID string) (dto.UserResponse, error)
+		GetAllUserWithPagination(ctx context.Context, req dto.UserPaginationRequest) (dto.UserPaginationResponse, error)
 		UpdateUser(ctx context.Context, req dto.UpdateUserRequest) (dto.UserResponse, error)
 		DeleteUser(ctx context.Context, req dto.DeleteUserRequest) (dto.UserResponse, error)
 	}
@@ -51,12 +52,17 @@ func (us *UserService) CreateUser(ctx context.Context, req dto.CreateUserRequest
 		return dto.UserResponse{}, constants.ErrInvalidPassword
 	}
 
+	hashedPassword, err := helpers.HashPassword(req.Password)
+	if err != nil {
+		return dto.UserResponse{}, constants.ErrHashPassword
+	}
+
 	user := model.User{
 		UserID:   uuid.New(),
 		Name:     req.Name,
 		Email:    req.Email,
-		Password: req.Password,
-		Role: constants.ENUM_ROLE_USER,
+		Password: hashedPassword,
+		Role:     constants.ENUM_ROLE_USER,
 	}
 
 	err = us.userRepo.CreateUser(ctx, nil, user)
@@ -65,16 +71,15 @@ func (us *UserService) CreateUser(ctx context.Context, req dto.CreateUserRequest
 	}
 
 	res := dto.UserResponse{
-		ID:      user.UserID,
-		Name:    user.Name,
-		Email:   user.Email,
+		ID:    user.UserID,
+		Name:  user.Name,
+		Email: user.Email,
 	}
 
 	return res, nil
 }
 
-
-func (us *UserService) ReadUserByEmail(ctx context.Context, req dto.LoginUserRequest) (dto.LoginResponse, error) {
+func (us *UserService) GetUserByEmail(ctx context.Context, req dto.LoginUserRequest) (dto.LoginResponse, error) {
 	if !helpers.IsValidEmail(req.Email) {
 		return dto.LoginResponse{}, constants.ErrInvalidEmail
 	}
@@ -104,8 +109,29 @@ func (us *UserService) ReadUserByEmail(ctx context.Context, req dto.LoginUserReq
 	}, nil
 }
 
+func (us *UserService) GetuserByID(ctx context.Context, userID string) (dto.UserResponse, error) {
+	if _, err := uuid.Parse(userID); err != nil {
+		return dto.UserResponse{}, constants.ErrInvalidUUID
+	}
 
-func (us *UserService) ReadAllUserWithPagination(ctx context.Context, req dto.UserPaginationRequest) (dto.UserPaginationResponse, error) {
+	user, _, err := us.userRepo.GetUserByID(ctx, nil, userID)
+
+	if err != nil {
+		return dto.UserResponse{}, constants.ErrGetUserByID
+	}
+
+	res := dto.UserResponse{
+		ID:      user.UserID,
+		Name:    user.Name,
+		Email:   user.Email,
+		Address: user.Address,
+		NoTelp:  user.NoTelp,
+	}
+
+	return res, nil
+}
+
+func (us *UserService) GetAllUserWithPagination(ctx context.Context, req dto.UserPaginationRequest) (dto.UserPaginationResponse, error) {
 	dataWithPaginate, err := us.userRepo.GetAllUserWithPagination(ctx, nil, req)
 	if err != nil {
 		return dto.UserPaginationResponse{}, constants.ErrGetAllUserWithPagination
@@ -141,6 +167,18 @@ func (us *UserService) UpdateUser(ctx context.Context, req dto.UpdateUserRequest
 		return dto.UserResponse{}, constants.ErrGetUserByID
 	}
 
+	if req.Email != "" && req.Email != user.Email {
+		if !helpers.IsValidEmail(req.Email) {
+			return dto.UserResponse{}, constants.ErrInvalidEmail
+		}
+
+		existingUser, exists, err := us.userRepo.GetUserByEmail(ctx, nil, req.Email)
+		if err == nil && exists && existingUser.UserID != user.UserID {
+			return dto.UserResponse{}, constants.ErrEmailAlreadyExists
+		}
+
+		user.Email = req.Email
+	}
 
 	if req.Name != "" {
 		if len(req.Name) < 5 {
@@ -149,21 +187,9 @@ func (us *UserService) UpdateUser(ctx context.Context, req dto.UpdateUserRequest
 		user.Name = req.Name
 	}
 
-	if req.Email != "" {
-		if !helpers.IsValidEmail(req.Email) {
-			return dto.UserResponse{}, constants.ErrInvalidEmail
-		}
-
-		_, exists, err := us.userRepo.GetUserByEmail(ctx, nil, req.Email)
-		if exists || err == nil {
-			return dto.UserResponse{}, constants.ErrEmailAlreadyExists
-		}
-
-		user.Email = req.Email
-	}
-
 	if req.Password != "" {
-		if checkPassword, err := helpers.CheckPassword(user.Password, []byte(req.Password)); checkPassword || err == nil {
+		isSame, _ := helpers.CheckPassword(user.Password, []byte(req.Password))
+		if isSame {
 			return dto.UserResponse{}, constants.ErrPasswordSame
 		}
 
@@ -171,7 +197,6 @@ func (us *UserService) UpdateUser(ctx context.Context, req dto.UpdateUserRequest
 		if err != nil {
 			return dto.UserResponse{}, constants.ErrHashPassword
 		}
-
 		user.Password = hashP
 	}
 
@@ -201,7 +226,6 @@ func (us *UserService) UpdateUser(ctx context.Context, req dto.UpdateUserRequest
 
 	return res, nil
 }
-
 
 func (us *UserService) DeleteUser(ctx context.Context, req dto.DeleteUserRequest) (dto.UserResponse, error) {
 	deletedUser, _, err := us.userRepo.GetUserByID(ctx, nil, req.UserID)

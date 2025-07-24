@@ -16,13 +16,24 @@ const (
 	MESSAGE_FAILED_UPDATE_USER         = "failed update user"
 	MESSAGE_FAILED_DELETE_USER         = "failed delete user"
 	MESSAGE_FAILED_LOGIN_USER          = "failed login user"
+	MESSAGE_FAILED_CREATE_CATEGORY     = "failed create category"
+	MESSAGE_FAILED_GET_ALL_CATEGORY    = "failed get all category"
+	MESSAGE_FAILED_UUID_FORMAT         = "failed uuid format"
+	MESSAGE_FAILED_GET_DETAIL_CATEGORY = "failed get detail category"
+	MESSAGE_FAILED_UPDATE_CATEGORY     = "failed update category"
+	MESSAGE_FAILED_DELETE_CATEGORY     = "failed delete category"
 
 	// success
-	MESSAGE_SUCCESS_CREATE_USER     = "success create user"
-	MESSAGE_SUCCESS_GET_DETAIL_USER = "success get detail user"
-	MESSAGE_SUCCESS_GET_LIST_USER   = "success get list user"
-	MESSAGE_SUCCESS_UPDATE_USER     = "success update user"
-	MESSAGE_SUCCESS_DELETE_USER     = "success delete user"
+	MESSAGE_SUCCESS_CREATE_USER         = "success create user"
+	MESSAGE_SUCCESS_GET_DETAIL_USER     = "success get detail user"
+	MESSAGE_SUCCESS_GET_LIST_USER       = "success get list user"
+	MESSAGE_SUCCESS_UPDATE_USER         = "success update user"
+	MESSAGE_SUCCESS_DELETE_USER         = "success delete user"
+	MESSAGE_SUCCESS_CREATE_CATEGORY     = "success create category"
+	MESSAGE_SUCCESS_GET_ALL_CATEGORY    = "success get all category"
+	MESSAGE_SUCCESS_GET_DETAIL_CATEGORY = "success get detail category"
+	MESSAGE_SUCCESS_UPDATE_CATEGORY     = "success update category"
+	MESSAGE_SUCCESS_DELETE_CATEGORY     = "success delete category"
 )
 
 var (
@@ -48,4 +59,10 @@ var (
 	ErrDeniedAccess             = errors.New("denied access")
 	ErrGetPermissionsByRoleID   = errors.New("failed get all permission by role id")
 	ErrInvalidPhoneNumber       = errors.New("invalid phone number")
+	ErrCreateCategory           = errors.New("failed created category")
+	ErrGetAllCategory           = errors.New("failed get all category")
+	ErrInvalidUUID              = errors.New("uuid is invalid")
+	ErrGetCategoryByID          = errors.New("failed get category by id")
+	ErrUpdateCategory           = errors.New("failed update category")
+	ErrDeleteCategoryByID       = errors.New("failed deleted category")
 )

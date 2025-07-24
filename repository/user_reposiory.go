@@ -79,7 +79,7 @@ func (ur *UserRepository) GetAllUserWithPagination(ctx context.Context, tx *gorm
 	if req.PaginationRequest.Search != "" {
 		searchValue := "%" + strings.ToLower(req.PaginationRequest.Search) + "%"
 		query = query.Where("LOWER(name) LIKE ? OR LOWER(email) LIKE ?",
-			searchValue, searchValue, searchValue)
+			searchValue, searchValue)
 	}
 
 	if req.UserID != "" {

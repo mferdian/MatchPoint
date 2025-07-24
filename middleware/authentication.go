@@ -50,7 +50,7 @@ func Authentication(jwtService service.InterfaceJWTService) gin.HandlerFunc {
 
 		ctx.Set("Authorization", tokenStr)
 		ctx.Set("user_id", userID)
-		ctx.Set("Role", role)
+		ctx.Set("role", role)
 
 		ctx.Next()
 	}
