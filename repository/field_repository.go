@@ -1,0 +1,144 @@
+package repository
+
+import (
+	"context"
+	"fieldreserve/dto"
+	"fieldreserve/model"
+	"math"
+	"strings"
+
+	"github.com/google/uuid"
+	"gorm.io/gorm"
+)
+
+type (
+	IFieldRepository interface {
+		CreateField(ctx context.Context, tx *gorm.DB, field model.Field) error
+		GetAllFieldWithPagination(ctx context.Context, tx *gorm.DB, req dto.FieldPaginationRequest) (dto.FieldPaginationRepositoryResponse, error)
+		GetFieldByID(ctx context.Context, tx *gorm.DB, fieldID string) (model.Field, bool, error)
+		UpdateField(ctx context.Context, tx *gorm.DB, field model.Field) error
+		GetCategoryByID(ctx context.Context, tx *gorm.DB, categoryID uuid.UUID) (model.Category, error)
+		DeleteField(ctx context.Context, tx *gorm.DB, fieldID string) error
+	}
+
+	FieldRepository struct {
+		db *gorm.DB
+	}
+)
+
+func NewFieldRepository(db *gorm.DB) *FieldRepository {
+	return &FieldRepository{
+		db: db,
+	}
+}
+
+func (fr *FieldRepository) CreateField(ctx context.Context, tx *gorm.DB, field model.Field) error {
+	if tx == nil {
+		tx = fr.db
+	}
+
+	return tx.WithContext(ctx).Create(&field).Error
+}
+
+func (fr *FieldRepository) GetAllFieldWithPagination(ctx context.Context, tx *gorm.DB, req dto.FieldPaginationRequest) (dto.FieldPaginationRepositoryResponse, error) {
+	if tx == nil {
+		tx = fr.db
+	}
+
+	var fields []model.Field
+	var count int64
+
+	if req.PaginationRequest.PerPage == 0 {
+		req.PaginationRequest.PerPage = 10
+	}
+	if req.PaginationRequest.Page == 0 {
+		req.PaginationRequest.Page = 1
+	}
+
+	// Join ke tabel categories
+	query := tx.WithContext(ctx).
+		Model(&model.Field{}).
+		Joins("LEFT JOIN categories ON categories.category_id = fields.category_id").
+		Preload("Category")
+
+	// Search di field_name, field_address, field_price, category.name
+	if search := strings.TrimSpace(req.PaginationRequest.Search); search != "" {
+		searchValue := "%" + strings.ToLower(search) + "%"
+
+		query = query.Where(`
+			LOWER(fields.field_name) LIKE ? OR
+			LOWER(fields.field_address) LIKE ? OR
+			CAST(fields.field_price AS TEXT) LIKE ? OR
+			LOWER(categories.name) LIKE ?`,
+			searchValue, searchValue, searchValue, searchValue,
+		)
+	}
+
+	if req.FieldID != "" {
+		query = query.Where("fields.field_id = ?", req.FieldID)
+	}
+
+	if err := query.Count(&count).Error; err != nil {
+		return dto.FieldPaginationRepositoryResponse{}, err
+	}
+
+	if err := query.Order("fields.created_at DESC").
+		Scopes(Paginate(req.PaginationRequest.Page, req.PaginationRequest.PerPage)).
+		Find(&fields).Error; err != nil {
+		return dto.FieldPaginationRepositoryResponse{}, err
+	}
+
+	totalPage := int64(math.Ceil(float64(count) / float64(req.PaginationRequest.PerPage)))
+
+	return dto.FieldPaginationRepositoryResponse{
+		Fields: fields,
+		PaginationResponse: dto.PaginationResponse{
+			Page:    req.PaginationRequest.Page,
+			PerPage: req.PaginationRequest.PerPage,
+			MaxPage: totalPage,
+			Count:   count,
+		},
+	}, nil
+}
+
+
+func (fr *FieldRepository) GetFieldByID(ctx context.Context, tx *gorm.DB, fieldID string) (model.Field, bool, error) {
+	if tx == nil {
+		tx = fr.db
+	}
+
+	var field model.Field
+	if err := tx.WithContext(ctx).Preload("Category").Where("field_id = ?", fieldID).Take(&field).Error; err != nil {
+		return model.Field{}, false, err
+	}
+
+	return field, true, nil
+}
+func (fr *FieldRepository) UpdateField(ctx context.Context, tx *gorm.DB, field model.Field) error {
+	if tx == nil {
+		tx = fr.db
+	}
+
+	return tx.WithContext(ctx).Where("field_id = ?", field.FieldID).Updates(&field).Error
+}
+func (fr *FieldRepository) DeleteField(ctx context.Context, tx *gorm.DB, fieldID string) error {
+	if tx == nil {
+		tx = fr.db
+	}
+
+	return tx.WithContext(ctx).Where("field_id = ?", fieldID).Delete(&model.Field{}).Error
+}
+
+func (fr *FieldRepository) GetCategoryByID(ctx context.Context, tx *gorm.DB, categoryID uuid.UUID) (model.Category, error) {
+	if tx == nil {
+		tx = fr.db
+	}
+
+	var category model.Category
+	if err := tx.WithContext(ctx).Where("category_id = ?", categoryID).First(&category).Error; err != nil {
+		return model.Category{}, err
+	}
+
+	return category, nil
+}
+

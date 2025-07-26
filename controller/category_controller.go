@@ -47,7 +47,7 @@ func (cc *CategoryController) CreateCategory(ctx *gin.Context) {
 	}
 
 	res := utils.BuildResponseSuccess(constants.MESSAGE_SUCCESS_CREATE_CATEGORY, result)
-	ctx.AbortWithStatusJSON(http.StatusCreated, res)
+	ctx.JSON(http.StatusCreated, res)
 }
 
 func (cc *CategoryController) GetAllCatgory(ctx *gin.Context) {

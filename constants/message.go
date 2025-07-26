@@ -22,6 +22,11 @@ const (
 	MESSAGE_FAILED_GET_DETAIL_CATEGORY = "failed get detail category"
 	MESSAGE_FAILED_UPDATE_CATEGORY     = "failed update category"
 	MESSAGE_FAILED_DELETE_CATEGORY     = "failed delete category"
+	MESSAGE_FAILED_CREATE_FIELD        = "failed create field"
+	MESSAGE_FAILED_GET_ALL_FIELD       = "failed get all field"
+	MESSAGE_FAILED_GET_DETAIL_FIELD    = "failed get detail field"
+	MESSAGE_FAILED_UPDATE_FIELD        = "failed update field"
+	MESSAGE_FAILED_DELETE_FIELD        = "failed delete field"
 
 	// success
 	MESSAGE_SUCCESS_CREATE_USER         = "success create user"
@@ -34,6 +39,11 @@ const (
 	MESSAGE_SUCCESS_GET_DETAIL_CATEGORY = "success get detail category"
 	MESSAGE_SUCCESS_UPDATE_CATEGORY     = "success update category"
 	MESSAGE_SUCCESS_DELETE_CATEGORY     = "success delete category"
+	MESSAGE_SUCCESS_CREATE_FIELD        = "success create field"
+	MESSAGE_SUCCESS_GET_ALL_FIELD       = "success get all field"
+	MESSAGE_SUCCESS_GET_DETAIL_FIELD    = "success get detail field"
+	MESSAGE_SUCCESS_UPDATE_FIELD        = "success update field"
+	MESSAGE_SUCCESS_DELETE_FIELD        = "success delete field"
 )
 
 var (
@@ -65,4 +75,11 @@ var (
 	ErrGetCategoryByID          = errors.New("failed get category by id")
 	ErrUpdateCategory           = errors.New("failed update category")
 	ErrDeleteCategoryByID       = errors.New("failed deleted category")
+	ErrCreateField              = errors.New("failed to create field")
+	ErrGetFieldByID             = errors.New("failed to get field by id")
+	ErrGetAllField              = errors.New("failed to get all fields")
+	ErrUpdateField              = errors.New("failed to update field")
+	ErrDeleteFieldByID          = errors.New("failed to delete field by id")
+	ErrInvalidFieldPrice        = errors.New("price cannot be negative")
+	ErrSaveImages               = errors.New("failed save image")
 )
