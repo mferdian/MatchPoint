@@ -15,7 +15,7 @@ type (
 	IFieldService interface {
 		CreateField(ctx context.Context, req dto.CreateFieldRequest) (dto.FieldResponse, error)
 		GetAllFieldWithPagination(ctx context.Context, req dto.FieldPaginationRequest) (dto.FieldPaginationResponse, error)
-		GetFieldByID(ctx context.Context, fieldID string) (dto.FieldResponse, error)
+		GetFieldByID(ctx context.Context, fieldID string) (dto.FieldFullResponse, error)
 		UpdateField(ctx context.Context, req dto.UpdateFieldRequest) (dto.FieldResponse, error)
 		DeleteField(ctx context.Context, req dto.DeleteFieldRequest) (dto.FieldResponse, error)
 	}
@@ -42,11 +42,6 @@ func (fs *FieldService) CreateField(ctx context.Context, req dto.CreateFieldRequ
 		return dto.FieldResponse{}, constants.ErrInvalidUUID
 	}
 
-	category, err := fs.fieldRepo.GetCategoryByID(ctx, nil, categoryUUID)
-	if err != nil {
-		return dto.FieldResponse{}, constants.ErrGetCategoryByID
-	}
-
 	field := model.Field{
 		FieldID:      uuid.New(),
 		CategoryID:   categoryUUID,
@@ -66,11 +61,7 @@ func (fs *FieldService) CreateField(ctx context.Context, req dto.CreateFieldRequ
 		FieldAddress: field.FieldAddress,
 		FieldPrice:   field.FieldPrice,
 		FieldImage:   field.FieldImage,
-		Category: dto.CategoryCompactResponse{
-			CategoryID:  category.CategoryID,
-			Name:        category.Name,
-			Description: category.Description,
-		},
+		CategoryID: field.CategoryID,
 	}, nil
 }
 
@@ -90,11 +81,6 @@ func (fs *FieldService) GetAllFieldWithPagination(ctx context.Context, req dto.F
 			FieldAddress: field.FieldAddress,
 			FieldPrice:   field.FieldPrice,
 			FieldImage:   field.FieldImage,
-			Category: dto.CategoryCompactResponse{
-				CategoryID:  field.Category.CategoryID,
-				Name:        field.Category.Name,
-				Description: field.Category.Description,
-			},
 		}
 
 		datas = append(datas, data)
@@ -111,18 +97,18 @@ func (fs *FieldService) GetAllFieldWithPagination(ctx context.Context, req dto.F
 	}, nil
 }
 
-func (fs *FieldService) GetFieldByID(ctx context.Context, fieldID string) (dto.FieldResponse, error) {
+func (fs *FieldService) GetFieldByID(ctx context.Context, fieldID string) (dto.FieldFullResponse, error) {
 	if _, err := uuid.Parse(fieldID); err != nil {
-		return dto.FieldResponse{}, constants.ErrInvalidUUID
+		return dto.FieldFullResponse{}, constants.ErrInvalidUUID
 	}
 
 	field, _, err := fs.fieldRepo.GetFieldByID(ctx, nil, fieldID)
 
 	if err != nil {
-		return dto.FieldResponse{}, constants.ErrGetFieldByID
+		return dto.FieldFullResponse{}, constants.ErrGetFieldByID
 	}
 
-	res := dto.FieldResponse{
+	res := dto.FieldFullResponse{
 		FieldID:      field.FieldID,
 		FieldName:    field.FieldName,
 		FieldAddress: field.FieldAddress,
@@ -178,11 +164,7 @@ func (fs *FieldService) UpdateField(ctx context.Context, req dto.UpdateFieldRequ
 		FieldAddress: field.FieldAddress,
 		FieldPrice:   field.FieldPrice,
 		FieldImage:   field.FieldImage,
-		Category: dto.CategoryCompactResponse{
-			CategoryID:  field.Category.CategoryID,
-			Name:        field.Category.Name,
-			Description: field.Category.Description,
-		},
+		CategoryID: field.CategoryID,
 	}
 
 	return res, nil
@@ -190,7 +172,6 @@ func (fs *FieldService) UpdateField(ctx context.Context, req dto.UpdateFieldRequ
 
 
 func (fs *FieldService) DeleteField(ctx context.Context, req dto.DeleteFieldRequest) (dto.FieldResponse, error) {
-
 	if _, err := uuid.Parse(req.FieldID); err != nil {
 		return dto.FieldResponse{}, constants.ErrInvalidUUID
 	}
@@ -211,11 +192,7 @@ func (fs *FieldService) DeleteField(ctx context.Context, req dto.DeleteFieldRequ
 		FieldAddress: deletedField.FieldAddress,
 		FieldPrice:   deletedField.FieldPrice,
 		FieldImage:   deletedField.FieldImage,
-		Category: dto.CategoryCompactResponse{
-			CategoryID:  deletedField.Category.CategoryID,
-			Name:        deletedField.Category.Name,
-			Description: deletedField.Category.Description,
-		},
+		CategoryID: deletedField.CategoryID,
 	}
 
 	return res, nil

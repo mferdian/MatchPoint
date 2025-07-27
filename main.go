@@ -45,14 +45,18 @@ func main() {
 		fieldRepo       = repository.NewFieldRepository(db)
 		fieldService    = service.NewFieldService(fieldRepo)
 		fieldController = controller.NewFieldController(fieldService)
+
+		scheduleRepo = repository.NewScheduleRepository(db)
+		scheduleService = service.NewScheduleService(scheduleRepo, fieldRepo)
+		scheduleController = controller.NewScheduleController(scheduleService)
 	)
 
 	server := gin.Default()
 	server.Use(middleware.CORSMiddleware())
 
 	routes.PublicRoutes(server, userController)
-	routes.UserRoutes(server, userController, categoryController, fieldController, jwtService)
-	routes.AdminRoutes(server, userController, categoryController, fieldController, jwtService)
+	routes.UserRoutes(server, userController, categoryController, fieldController, scheduleController, jwtService)
+	routes.AdminRoutes(server, userController, categoryController, fieldController, scheduleController, jwtService)
 
 	server.Static("/assets", "./assets")
 

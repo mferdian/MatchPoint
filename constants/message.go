@@ -27,6 +27,12 @@ const (
 	MESSAGE_FAILED_GET_DETAIL_FIELD    = "failed get detail field"
 	MESSAGE_FAILED_UPDATE_FIELD        = "failed update field"
 	MESSAGE_FAILED_DELETE_FIELD        = "failed delete field"
+	MESSAGE_FAILED_CREATE_SCHEDULE     = "failed create schedule"
+	MESSAGE_FAILED_GET_ALL_SCHEDULE    = "failed get all schedule"
+	MESSAGE_FAILED_UPDATE_SCHEDULE     = "failed update schedule"
+	MESSAGE_FAILED_DELETE_SCHEDULE     = "failed delete schedule"
+	MESSAGE_FAILED_GET_DETAIL_SCHEDULE = "failed get detail schedule"
+
 
 	// success
 	MESSAGE_SUCCESS_CREATE_USER         = "success create user"
@@ -44,6 +50,11 @@ const (
 	MESSAGE_SUCCESS_GET_DETAIL_FIELD    = "success get detail field"
 	MESSAGE_SUCCESS_UPDATE_FIELD        = "success update field"
 	MESSAGE_SUCCESS_DELETE_FIELD        = "success delete field"
+	MESSAGE_SUCCESS_CREATE_SCHEDULE     = "success create schedule"
+	MESSAGE_SUCCESS_GET_ALL_SCHEDULE    = "success get all schedule"
+	MESSAGE_SUCCESS_UPDATE_SCHEDULE     = "success update schedule"
+	MESSAGE_SUCCESS_DELETE_SCHEDULE     = "success delete schedule"
+	MESSAGE_SUCCESS_GET_DETAIL_SCHEDULE =  "success get detail schedule"
 )
 
 var (
@@ -82,4 +93,13 @@ var (
 	ErrDeleteFieldByID          = errors.New("failed to delete field by id")
 	ErrInvalidFieldPrice        = errors.New("price cannot be negative")
 	ErrSaveImages               = errors.New("failed save image")
+	ErrFieldNotFound            = errors.New("required field not found")
+	ErrCreateSchedule           = errors.New("failed to create schedule")
+	ErrGetAllSchedule           = errors.New("failed to retrieve all schedules")
+	ErrScheduleNotFound         = errors.New("schedule not found")
+	ErrUpdateSchedule           = errors.New("failed to update schedule")
+	ErrDeleteSchedule           = errors.New("failed to delete schedule")
+	ErrGetScheduleByID          = errors.New("failed to retrieve schedule by ID")
+	ErrInvalidDayOfWeek         = errors.New("invalid day of the week provided")
+	ErrCloseTimeMustAfterOpen   = errors.New("closing time must be after opening time")
 )

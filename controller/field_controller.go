@@ -63,14 +63,8 @@ func (fc *FieldController) GetAllField(ctx *gin.Context) {
 		ctx.AbortWithStatusJSON(http.StatusBadRequest, res)
 		return
 	}
-
-	res := utils.Response{
-		Status:   true,
-		Messsage: constants.MESSAGE_SUCCESS_GET_ALL_FIELD,
-		Data:     result.Data,
-		Meta:     result.PaginationResponse,
-	}
-
+	
+	res := utils.BuildResponseSuccess(constants.MESSAGE_SUCCESS_GET_ALL_FIELD, result)
 	ctx.JSON(http.StatusOK, res)
 }
 func (fc *FieldController) GetFieldByID(ctx *gin.Context) {
@@ -94,7 +88,6 @@ func (fc *FieldController) GetFieldByID(ctx *gin.Context) {
 }
 func (fc *FieldController) UpdateField(ctx *gin.Context) {
 	fieldID := ctx.Param("id")
-
 	role := ctx.GetString("role")
 
 	if role != constants.ENUM_ROLE_ADMIN {

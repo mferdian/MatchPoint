@@ -9,7 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func AdminRoutes(r *gin.Engine, userController controller.IUserController, categoryController controller.ICategoryController, fieldcontroller controller.IFieldController, jwtService service.InterfaceJWTService) {
+func AdminRoutes(r *gin.Engine, userController controller.IUserController, categoryController controller.ICategoryController, fieldcontroller controller.IFieldController, scheduleController controller.IScheduleController,jwtService service.InterfaceJWTService) {
 	admin := r.Group("/api/admin")
 	admin.Use(middleware.Authentication(jwtService))
 	admin.Use(middleware.AuthorizeRole(constants.ENUM_ROLE_ADMIN))
@@ -27,4 +27,10 @@ func AdminRoutes(r *gin.Engine, userController controller.IUserController, categ
 	admin.POST("/create-field", fieldcontroller.CreateField)
 	admin.PATCH("/update-field/:id", fieldcontroller.UpdateField)
 	admin.DELETE("/delete-field/:id", fieldcontroller.DeleteField)
+
+	// Schedule Management 
+	admin.POST("/create-schedule", scheduleController.CreateSchedule)
+	admin.PATCH("/update-schedule/:id", scheduleController.UpdateSchedule)
+	admin.DELETE("/delete-schedule/:id", scheduleController.DeleteSchedule)
+	admin.GET("/get-all-schedule", scheduleController.GetAllSchedule)
 }

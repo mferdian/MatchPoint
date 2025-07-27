@@ -23,6 +23,15 @@ type (
 	}
 
 	FieldResponse struct {
+		FieldID      uuid.UUID `json:"field_id"`
+		FieldName    string    `json:"field_name"`
+		FieldAddress string    `json:"field_address"`
+		FieldPrice   int       `json:"field_price"`
+		FieldImage   string    `json:"field_image"`
+		CategoryID   uuid.UUID `json:"category_id"`
+	}
+
+	FieldFullResponse struct {
 		FieldID      uuid.UUID               `json:"field_id"`
 		FieldName    string                  `json:"field_name"`
 		FieldAddress string                  `json:"field_address"`

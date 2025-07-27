@@ -19,6 +19,7 @@ type (
 		UpdateField(ctx context.Context, tx *gorm.DB, field model.Field) error
 		GetCategoryByID(ctx context.Context, tx *gorm.DB, categoryID uuid.UUID) (model.Category, error)
 		DeleteField(ctx context.Context, tx *gorm.DB, fieldID string) error
+		GetAllWithSchedules(ctx context.Context, tx *gorm.DB) ([]model.Field, error)
 	}
 
 	FieldRepository struct {
@@ -101,7 +102,6 @@ func (fr *FieldRepository) GetAllFieldWithPagination(ctx context.Context, tx *go
 	}, nil
 }
 
-
 func (fr *FieldRepository) GetFieldByID(ctx context.Context, tx *gorm.DB, fieldID string) (model.Field, bool, error) {
 	if tx == nil {
 		tx = fr.db
@@ -140,5 +140,18 @@ func (fr *FieldRepository) GetCategoryByID(ctx context.Context, tx *gorm.DB, cat
 	}
 
 	return category, nil
+}
+
+func (fr *FieldRepository) GetAllWithSchedules(ctx context.Context, tx *gorm.DB) ([]model.Field, error) {
+	if tx == nil {
+		tx = fr.db
+	}
+
+	var fields []model.Field
+	err := tx.WithContext(ctx).
+		Preload("Category").
+		Preload("Schedules").
+		Find(&fields).Error
+	return fields, err
 }
 
