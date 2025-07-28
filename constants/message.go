@@ -32,7 +32,11 @@ const (
 	MESSAGE_FAILED_UPDATE_SCHEDULE     = "failed update schedule"
 	MESSAGE_FAILED_DELETE_SCHEDULE     = "failed delete schedule"
 	MESSAGE_FAILED_GET_DETAIL_SCHEDULE = "failed get detail schedule"
-
+		MESSAGE_FAILED_CREATE_BOOKING     = "failed create booking"
+	MESSAGE_FAILED_GET_ALL_BOOKING    = "failed get all bookings"
+	MESSAGE_FAILED_GET_DETAIL_BOOKING = "failed get detail booking"
+	MESSAGE_FAILED_UPDATE_BOOKING     = "failed update booking"
+	MESSAGE_FAILED_DELETE_BOOKING     = "failed delete booking"
 
 	// success
 	MESSAGE_SUCCESS_CREATE_USER         = "success create user"
@@ -54,7 +58,13 @@ const (
 	MESSAGE_SUCCESS_GET_ALL_SCHEDULE    = "success get all schedule"
 	MESSAGE_SUCCESS_UPDATE_SCHEDULE     = "success update schedule"
 	MESSAGE_SUCCESS_DELETE_SCHEDULE     = "success delete schedule"
-	MESSAGE_SUCCESS_GET_DETAIL_SCHEDULE =  "success get detail schedule"
+	MESSAGE_SUCCESS_GET_DETAIL_SCHEDULE = "success get detail schedule"
+	MESSAGE_SUCCESS_CREATE_BOOKING     = "success create booking"
+	MESSAGE_SUCCESS_GET_ALL_BOOKING    = "success get all bookings"
+	MESSAGE_SUCCESS_GET_DETAIL_BOOKING = "success get detail booking"
+	MESSAGE_SUCCESS_UPDATE_BOOKING     = "success update booking"
+	MESSAGE_SUCCESS_DELETE_BOOKING     = "success delete booking"
+
 )
 
 var (
@@ -102,4 +112,14 @@ var (
 	ErrGetScheduleByID          = errors.New("failed to retrieve schedule by ID")
 	ErrInvalidDayOfWeek         = errors.New("invalid day of the week provided")
 	ErrCloseTimeMustAfterOpen   = errors.New("closing time must be after opening time")
+	ErrInvalidBookingDate       = errors.New("invalid booking date format")
+	ErrInvalidTimeFormat        = errors.New("invalid time format (expected HH:MM)")
+	ErrBookingTooSoon           = errors.New("booking must be at least 2 hours in the future")
+	ErrOutsideOperatingHours    = errors.New("booking time is outside of field's operational hours")
+	ErrCreateBooking            = errors.New("failed to create booking")
+	ErrUnauthorized             = errors.New("failed Authorized")
+	ErrGetBookingByID           = errors.New("failed to get booking by ID")
+	ErrUpdateBooking            = errors.New("failed to update booking")
+	ErrCannotCancelLate         = errors.New("cannot cancel booking, too close to the booking time")
+	ErrDeleteBooking            = errors.New("failed to delete booking")
 )

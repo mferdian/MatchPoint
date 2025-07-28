@@ -49,14 +49,18 @@ func main() {
 		scheduleRepo = repository.NewScheduleRepository(db)
 		scheduleService = service.NewScheduleService(scheduleRepo, fieldRepo)
 		scheduleController = controller.NewScheduleController(scheduleService)
+
+		bookingRepo = repository.NewBookingRepository(db)
+		bookingService = service.NewBookingService(bookingRepo, jwtService, scheduleRepo)
+		bookingController = controller.NewBookingController(bookingService)
 	)
 
 	server := gin.Default()
 	server.Use(middleware.CORSMiddleware())
 
 	routes.PublicRoutes(server, userController)
-	routes.UserRoutes(server, userController, categoryController, fieldController, scheduleController, jwtService)
-	routes.AdminRoutes(server, userController, categoryController, fieldController, scheduleController, jwtService)
+	routes.UserRoutes(server, userController, categoryController, fieldController, scheduleController, bookingController, jwtService)
+	routes.AdminRoutes(server, userController, categoryController, fieldController, scheduleController, bookingController, jwtService)
 
 	server.Static("/assets", "./assets")
 

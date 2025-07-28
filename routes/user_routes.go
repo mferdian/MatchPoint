@@ -14,6 +14,7 @@ func UserRoutes(
 	categoryController controller.ICategoryController,
 	fieldController controller.IFieldController,
 	scheduleController controller.IScheduleController,
+	bookingController controller.IBookingController,
 	jwtService service.InterfaceJWTService,
 ) {
 	user := r.Group("/api/users")
@@ -32,7 +33,14 @@ func UserRoutes(
 	user.GET("/get-detail-field/:id", fieldController.GetFieldByID)
 
 	// --- Schedule Routes ---
-	user.GET("/get-schedule-by-id/:id", scheduleController.GetScheduleByID)               
+	user.GET("/get-schedule-by-id/:id", scheduleController.GetScheduleByID)
 	user.GET("/get-schedules-by-field/:field_id", scheduleController.GetSchedulesByFieldID)
 	user.GET("/get-schedule-by-day/:field_id/day/:day", scheduleController.GetScheduleByFieldIDAndDay)
+
+	user.POST("/create-booking", bookingController.CreateBooking)
+	user.GET("/get-all-bookings", bookingController.GetAllBooking)      
+	user.GET("/get-booking/:id", bookingController.GetBookingByID)      
+	user.PATCH("/update-booking/:id", bookingController.UpdateBooking) 
+	user.DELETE("/delete-booking/:id", bookingController.DeleteBooking)
+
 }
