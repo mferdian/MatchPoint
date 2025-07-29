@@ -8,12 +8,12 @@ import (
 
 type (
 	ScheduleFullResponse struct {
-		ScheduleID uuid.UUID `json:"schedule_id"`
-		DayOfWeek  int       `json:"day_of_week"`
-		DayName    string    `json:"day_name"`
-		OpenTime   string    `json:"open_time"`
-		CloseTime  string    `json:"close_time"`
-		Field      FieldCompactResponse
+		ScheduleID uuid.UUID            `json:"schedule_id"`
+		DayOfWeek  int                  `json:"day_of_week"`
+		DayName    string               `json:"day_name"`
+		OpenTime   string               `json:"open_time"`
+		CloseTime  string               `json:"close_time"`
+		Field      FieldCompactResponse `json:"field"`
 	}
 
 	ScheduleResponse struct {
@@ -36,13 +36,13 @@ type (
 
 	CreateScheduleRequest struct {
 		FieldID   string    `json:"field_id" binding:"required"`
-		DayOfWeek int       `json:"day_of_week" binding:"required,min=1,max=7"`
+		DayOfWeek int       `json:"day_of_week" binding:"min=0,max=6"`
 		OpenTime  time.Time `json:"open_time" binding:"required"`
 		CloseTime time.Time `json:"close_time" binding:"required"`
 	}
 
 	UpdateScheduleRequest struct {
-		ScheduleID string     `json:"-"`        
+		ScheduleID string     `json:"-"`
 		FieldID    *string    `json:"field_id"`
 		DayOfWeek  *int       `json:"day_of_week"`
 		OpenTime   *time.Time `json:"open_time"`

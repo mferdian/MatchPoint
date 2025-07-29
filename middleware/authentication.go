@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	"fieldreserve/constants"
 	"fieldreserve/service"
 	"fieldreserve/utils"
@@ -52,7 +53,10 @@ func Authentication(jwtService service.InterfaceJWTService) gin.HandlerFunc {
 		ctx.Set("user_id", userID)
 		ctx.Set("role", role)
 
+		// Simpan token ke context.Context agar bisa diakses di service layer
+		stdCtx := context.WithValue(ctx.Request.Context(), "token", tokenStr)
+		ctx.Request = ctx.Request.WithContext(stdCtx)
+
 		ctx.Next()
 	}
 }
-

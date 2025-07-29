@@ -39,16 +39,14 @@ type (
 	}
 
 	UpdateBookingRequest struct {
-		BookingID     string     `json:"-"`
-		UserID        *uuid.UUID `json:"user_id,omitempty"`
-		FieldID       *uuid.UUID `json:"field_id,omitempty"`
-		PaymentMethod *string    `json:"payment_method,omitempty"`
-		BookingDate   *time.Time `json:"booking_date,omitempty"`
-		StartTime     *time.Time `json:"start_time,omitempty"`
-		EndTime       *time.Time `json:"end_time,omitempty"`
-		Status        *string    `json:"status,omitempty"`
+		BookingID     string  `json:"-"`
+		FieldID       *string `json:"field_id,omitempty"`
+		PaymentMethod *string `json:"payment_method,omitempty"`
+		BookingDate   *string `json:"booking_date,omitempty"` // format: YYYY-MM-DD
+		StartTime     *string `json:"start_time,omitempty"`   // format: HH:MM
+		EndTime       *string `json:"end_time,omitempty"`     // format: HH:MM
+		Status        *string `json:"status,omitempty"`
 	}
-
 	DeleteBookingRequest struct {
 		BookingID string `json:"-"`
 	}

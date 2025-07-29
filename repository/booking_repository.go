@@ -6,7 +6,9 @@ import (
 	"fieldreserve/model"
 	"math"
 	"strings"
+	"time"
 
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -17,6 +19,8 @@ type (
 		GetBookingByID(ctx context.Context, tx *gorm.DB, bookingID string) (model.Booking, bool, error)
 		UpdateBooking(ctx context.Context, tx *gorm.DB, booking model.Booking) error
 		DeleteBooking(ctx context.Context, tx *gorm.DB, bookingID string) error
+		CheckBookingOverlap(ctx context.Context, tx *gorm.DB, fieldID uuid.UUID, bookingDate time.Time, startTime, endTime time.Time) (bool, error)
+
 	}
 
 	BookingRepository struct {
@@ -26,7 +30,7 @@ type (
 
 func NewBookingRepository(db *gorm.DB) *BookingRepository {
 	return &BookingRepository{
-		db:db,
+		db: db,
 	}
 }
 
@@ -37,7 +41,6 @@ func (br *BookingRepository) CreateBooking(ctx context.Context, tx *gorm.DB, boo
 
 	return tx.WithContext(ctx).Create(&booking).Error
 }
-
 
 func (br *BookingRepository) GetAllBooking(ctx context.Context, tx *gorm.DB, req dto.BookingPaginationRequest) (dto.BookingPaginationRepositoryResponse, error) {
 	if tx == nil {
@@ -118,7 +121,11 @@ func (br *BookingRepository) GetBookingByID(ctx context.Context, tx *gorm.DB, bo
 	}
 
 	var booking model.Booking
-	if err := tx.WithContext(ctx).Preload("Field").Where("booking_id = ?", bookingID).Take(&booking).Error; err != nil {
+	if err := tx.WithContext(ctx).
+		Preload("Field").
+		Preload("Field.Category").
+		Where("booking_id = ?", bookingID).
+		Take(&booking).Error; err != nil {
 		return model.Booking{}, false, err
 	}
 
@@ -133,7 +140,6 @@ func (br *BookingRepository) UpdateBooking(ctx context.Context, tx *gorm.DB, boo
 	return tx.WithContext(ctx).Where("booking_id = ?", booking.BookingID).Updates(&booking).Error
 }
 
-
 func (br *BookingRepository) DeleteBooking(ctx context.Context, tx *gorm.DB, bookingID string) error {
 	if tx == nil {
 		tx = br.db
@@ -141,3 +147,23 @@ func (br *BookingRepository) DeleteBooking(ctx context.Context, tx *gorm.DB, boo
 
 	return tx.WithContext(ctx).Where("booking_id = ?", bookingID).Delete(&model.Booking{}).Error
 }
+
+func (br *BookingRepository) CheckBookingOverlap(ctx context.Context, tx *gorm.DB, fieldID uuid.UUID, bookingDate time.Time, startTime, endTime time.Time) (bool, error) {
+    if tx == nil {
+        tx = br.db
+    }
+
+    var count int64
+    err := tx.WithContext(ctx).
+        Model(&model.Booking{}).
+        Where("field_id = ? AND booking_date = ? AND status != ?", fieldID, bookingDate, "cancelled").
+        Where("? < end_time AND ? > start_time", startTime, endTime).
+        Count(&count).Error
+
+    if err != nil {
+        return false, err
+    }
+
+    return count > 0, nil
+}
+

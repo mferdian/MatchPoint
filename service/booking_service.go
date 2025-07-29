@@ -4,8 +4,10 @@ import (
 	"context"
 	"fieldreserve/constants"
 	"fieldreserve/dto"
+	"fieldreserve/helpers"
 	"fieldreserve/model"
 	"fieldreserve/repository"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -40,67 +42,89 @@ func NewBookingService(
 }
 
 func (bs *BookingService) CreateBooking(ctx context.Context, req dto.CreateBookingRequest) (dto.BookingResponse, error) {
+	loc := helpers.GetAppLocation()
+
+	// Ambil token dari context
 	tokenString, ok := ctx.Value("token").(string)
 	if !ok || tokenString == "" {
 		return dto.BookingResponse{}, constants.ErrUnauthorized
 	}
 
-	userIDstr, err := bs.jwtService.GetUserIDByToken(tokenString)
+	userIDStr, err := bs.jwtService.GetUserIDByToken(tokenString)
 	if err != nil {
 		return dto.BookingResponse{}, constants.ErrUnauthorized
 	}
 
-	userID, _ := uuid.Parse(userIDstr)
-
-	// Parse fieldID
-	fieldUUID, err := uuid.Parse(req.FieldID)
+	userID, err := uuid.Parse(userIDStr)
 	if err != nil {
 		return dto.BookingResponse{}, constants.ErrInvalidUUID
 	}
 
-	// Parse tanggal dan jam
-	bookingDate, err := time.Parse("2006-01-02", req.BookingDate)
+	fieldID, err := uuid.Parse(req.FieldID)
+	if err != nil {
+		return dto.BookingResponse{}, constants.ErrInvalidUUID
+	}
+
+	// Parsing tanggal dan waktu booking (string)
+	bookingDate, err := time.ParseInLocation("2006-01-02", req.BookingDate, loc)
 	if err != nil {
 		return dto.BookingResponse{}, constants.ErrInvalidBookingDate
 	}
-	startParsed, err := time.Parse("15:04", req.StartTime)
+
+	startParsed, err := time.ParseInLocation("15:04", req.StartTime, loc)
 	if err != nil {
 		return dto.BookingResponse{}, constants.ErrInvalidTimeFormat
 	}
-	endParsed, err := time.Parse("15:04", req.EndTime)
+	endParsed, err := time.ParseInLocation("15:04", req.EndTime, loc)
 	if err != nil {
 		return dto.BookingResponse{}, constants.ErrInvalidTimeFormat
 	}
 
-	// Gabungkan bookingDate + jam
-	startTime := time.Date(bookingDate.Year(), bookingDate.Month(), bookingDate.Day(), startParsed.Hour(), startParsed.Minute(), 0, 0, time.UTC)
-	endTime := time.Date(bookingDate.Year(), bookingDate.Month(), bookingDate.Day(), endParsed.Hour(), endParsed.Minute(), 0, 0, time.UTC)
+	// Gabungkan tanggal booking + jam
+	startTime := time.Date(bookingDate.Year(), bookingDate.Month(), bookingDate.Day(),
+		startParsed.Hour(), startParsed.Minute(), 0, 0, loc)
 
-	// Validasi: minimal 2 jam dari sekarang
-	if startTime.Before(time.Now().Add(2 * time.Hour)) {
+	endTime := time.Date(bookingDate.Year(), bookingDate.Month(), bookingDate.Day(),
+		endParsed.Hour(), endParsed.Minute(), 0, 0, loc)
+
+	// Validasi minimal 2 jam dari sekarang
+	now := time.Now().In(loc)
+	if startTime.Before(now.Add(2 * time.Hour)) {
 		return dto.BookingResponse{}, constants.ErrBookingTooSoon
 	}
 
-	// Ambil schedule dari field & day
-	dayOfWeek := int(bookingDate.Weekday()) // 0: Sunday, 1: Monday, ..., 6: Saturday
+	// Ambil schedule field di hari tersebut
+	dayOfWeek := int(bookingDate.Weekday()) // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
 	schedule, err := bs.scheduleRepo.GetScheduleByFieldIDAndDay(ctx, nil, req.FieldID, dayOfWeek)
 	if err != nil {
 		return dto.BookingResponse{}, constants.ErrScheduleNotFound
 	}
 
-	// Validasi dalam jam operasional
-	open := time.Date(startTime.Year(), startTime.Month(), startTime.Day(), schedule.OpenTime.Hour(), schedule.OpenTime.Minute(), 0, 0, time.UTC)
-	close := time.Date(startTime.Year(), startTime.Month(), startTime.Day(), schedule.CloseTime.Hour(), schedule.CloseTime.Minute(), 0, 0, time.UTC)
+	// Buat open-close time dari schedule (dalam zona waktu Asia/Jakarta)
+	openTime := time.Date(bookingDate.Year(), bookingDate.Month(), bookingDate.Day(),
+		schedule.OpenTime.Hour(), schedule.OpenTime.Minute(), 0, 0, loc)
+	closeTime := time.Date(bookingDate.Year(), bookingDate.Month(), bookingDate.Day(),
+		schedule.CloseTime.Hour(), schedule.CloseTime.Minute(), 0, 0, loc)
 
-	if startTime.Before(open) || endTime.After(close) {
+	if startTime.Before(openTime) || endTime.After(closeTime) {
 		return dto.BookingResponse{}, constants.ErrOutsideOperatingHours
 	}
 
-	// Simpan booking
+	// Validasi tabrakan waktu booking
+	overlap, err := bs.bookingRepo.CheckBookingOverlap(ctx, nil, fieldID, bookingDate, startTime, endTime)
+	if err != nil {
+		return dto.BookingResponse{}, constants.ErrCheckOverlap
+	}
+
+	if overlap {
+		return dto.BookingResponse{}, constants.ErrBookingOverlap
+	}
+
+	// Buat model booking
 	booking := model.Booking{
 		BookingID:     uuid.New(),
 		UserID:        userID,
-		FieldID:       fieldUUID,
+		FieldID:       fieldID,
 		PaymentMethod: req.PaymentMethod,
 		BookingDate:   bookingDate,
 		StartTime:     startTime,
@@ -112,7 +136,8 @@ func (bs *BookingService) CreateBooking(ctx context.Context, req dto.CreateBooki
 		return dto.BookingResponse{}, constants.ErrCreateBooking
 	}
 
-	res := dto.BookingResponse{
+	// Build response
+	return dto.BookingResponse{
 		BookingID:     booking.BookingID,
 		UserID:        booking.UserID,
 		FieldID:       booking.FieldID,
@@ -121,9 +146,7 @@ func (bs *BookingService) CreateBooking(ctx context.Context, req dto.CreateBooki
 		StartTime:     booking.StartTime,
 		EndTime:       booking.EndTime,
 		Status:        booking.Status,
-	}
-
-	return res, nil
+	}, nil
 }
 
 func (bs *BookingService) GetAllBooking(ctx context.Context, req dto.BookingPaginationRequest) (dto.BookingPaginationResponse, error) {
@@ -204,41 +227,59 @@ func (bs *BookingService) UpdateBooking(ctx context.Context, req dto.UpdateBooki
 		return dto.BookingResponse{}, constants.ErrInvalidUUID
 	}
 
-	// Ambil data booking lama
 	booking, _, err := bs.bookingRepo.GetBookingByID(ctx, nil, req.BookingID)
 	if err != nil {
 		return dto.BookingResponse{}, constants.ErrGetBookingByID
 	}
 
-	// Update field jika ada perubahan
-	if req.UserID != nil {
-		booking.UserID = *req.UserID
-	}
+	loc, _ := time.LoadLocation("Asia/Jakarta")
+
 	if req.FieldID != nil {
-		booking.FieldID = *req.FieldID
+		fieldUUID, err := uuid.Parse(*req.FieldID)
+		if err != nil {
+			return dto.BookingResponse{}, constants.ErrInvalidUUID
+		}
+		booking.FieldID = fieldUUID
 	}
+
 	if req.PaymentMethod != nil {
 		booking.PaymentMethod = *req.PaymentMethod
 	}
+
 	if req.BookingDate != nil {
-		booking.BookingDate = *req.BookingDate
+		date, err := time.ParseInLocation("2006-01-02", *req.BookingDate, loc)
+		if err != nil {
+			return dto.BookingResponse{}, constants.ErrInvalidBookingDate
+		}
+		booking.BookingDate = date
 	}
+
 	if req.StartTime != nil {
-		booking.StartTime = *req.StartTime
+		startDateTimeStr := fmt.Sprintf("%sT%s:00", booking.BookingDate.Format("2006-01-02"), *req.StartTime)
+		startDateTime, err := time.ParseInLocation("2006-01-02T15:04:05", startDateTimeStr, loc)
+		if err != nil {
+			return dto.BookingResponse{}, constants.ErrInvalidStartTime
+		}
+		booking.StartTime = startDateTime
 	}
+
 	if req.EndTime != nil {
-		booking.EndTime = *req.EndTime
+		endDateTimeStr := fmt.Sprintf("%sT%s:00", booking.BookingDate.Format("2006-01-02"), *req.EndTime)
+		endDateTime, err := time.ParseInLocation("2006-01-02T15:04:05", endDateTimeStr, loc)
+		if err != nil {
+			return dto.BookingResponse{}, fmt.Errorf("invalid end_time format: %w", err)
+		}
+		booking.EndTime = endDateTime
 	}
+
 	if req.Status != nil {
 		booking.Status = *req.Status
 	}
 
-	// Simpan perubahan
 	if err := bs.bookingRepo.UpdateBooking(ctx, nil, booking); err != nil {
 		return dto.BookingResponse{}, constants.ErrUpdateBooking
 	}
 
-	// Kembalikan response
 	return dto.BookingResponse{
 		BookingID:     booking.BookingID,
 		UserID:        booking.UserID,
@@ -250,8 +291,6 @@ func (bs *BookingService) UpdateBooking(ctx context.Context, req dto.UpdateBooki
 		Status:        booking.Status,
 	}, nil
 }
-
-
 
 func (bs *BookingService) DeleteBooking(ctx context.Context, req dto.DeleteBookingRequest) (dto.BookingResponse, error) {
 	if _, err := uuid.Parse(req.BookingID); err != nil {

@@ -37,6 +37,8 @@ func NewScheduleService(scheduleRepo repository.IScheduleRepository, fieldRepo r
 }
 
 func (ss *ScheduleService) CreateSchedule(ctx context.Context, req dto.CreateScheduleRequest) (dto.ScheduleResponse, error) {
+	loc := helpers.GetAppLocation()
+
 	fieldUUID, err := uuid.Parse(req.FieldID)
 	if err != nil {
 		return dto.ScheduleResponse{}, constants.ErrInvalidUUID
@@ -51,8 +53,8 @@ func (ss *ScheduleService) CreateSchedule(ctx context.Context, req dto.CreateSch
 		ScheduleID: uuid.New(),
 		FieldID:    fieldUUID,
 		DayOfWeek:  req.DayOfWeek,
-		OpenTime:   req.OpenTime,
-		CloseTime:  req.CloseTime,
+		OpenTime:   req.OpenTime.In(loc),
+		CloseTime:  req.CloseTime.In(loc),
 	}
 
 	if err := ss.scheduleRepo.CreateSchedule(ctx, nil, schedule); err != nil {
@@ -64,14 +66,16 @@ func (ss *ScheduleService) CreateSchedule(ctx context.Context, req dto.CreateSch
 		FieldID:    schedule.FieldID,
 		DayOfWeek:  schedule.DayOfWeek,
 		DayName:    helpers.DayIntToName(schedule.DayOfWeek),
-		OpenTime:   schedule.OpenTime.Format("15:04"),
-		CloseTime:  schedule.CloseTime.Format("15:04"),
+		OpenTime:   schedule.OpenTime.In(loc).Format("15:04"),
+		CloseTime:  schedule.CloseTime.In(loc).Format("15:04"),
 	}
 
 	return res, nil
 }
 
 func (ss *ScheduleService) GetAllSchedule(ctx context.Context) ([]dto.ScheduleResponse, error) {
+	loc := helpers.GetAppLocation()
+
 	schedules, err := ss.scheduleRepo.GetAllSchedule(ctx, nil)
 	if err != nil {
 		return nil, constants.ErrGetAllSchedule
@@ -84,14 +88,16 @@ func (ss *ScheduleService) GetAllSchedule(ctx context.Context) ([]dto.ScheduleRe
 			FieldID:    s.FieldID,
 			DayOfWeek:  s.DayOfWeek,
 			DayName:    helpers.DayIntToName(s.DayOfWeek),
-			OpenTime:   s.OpenTime.UTC().Format("15:04"),
-			CloseTime:  s.CloseTime.UTC().Format("15:04"),
+			OpenTime:   s.OpenTime.In(loc).Format("15:04"),
+			CloseTime:  s.CloseTime.In(loc).Format("15:04"),
 		})
 	}
 	return res, nil
 }
 
 func (ss *ScheduleService) GetScheduleByID(ctx context.Context, scheduleID string) (dto.ScheduleFullResponse, error) {
+	loc := helpers.GetAppLocation()
+
 	if _, err := uuid.Parse(scheduleID); err != nil {
 		return dto.ScheduleFullResponse{}, constants.ErrInvalidUUID
 	}
@@ -121,8 +127,8 @@ func (ss *ScheduleService) GetScheduleByID(ctx context.Context, scheduleID strin
 		ScheduleID: schedule.ScheduleID,
 		DayOfWeek:  schedule.DayOfWeek,
 		DayName:    helpers.DayIntToName(schedule.DayOfWeek),
-		OpenTime:   schedule.OpenTime.UTC().Format("15:04"),
-		CloseTime:  schedule.CloseTime.UTC().Format("15:04"),
+		OpenTime:   schedule.OpenTime.In(loc).Format("15:04"),
+		CloseTime:  schedule.CloseTime.In(loc).Format("15:04"),
 		Field:      dto.FieldCompactResponse(fieldDTO),
 	}
 
@@ -130,6 +136,8 @@ func (ss *ScheduleService) GetScheduleByID(ctx context.Context, scheduleID strin
 }
 
 func (ss *ScheduleService) UpdateSchedule(ctx context.Context, req dto.UpdateScheduleRequest) (dto.ScheduleResponse, error) {
+	loc := helpers.GetAppLocation()
+	
 	if _, err := uuid.Parse(req.ScheduleID); err != nil {
 		return dto.ScheduleResponse{}, constants.ErrInvalidUUID
 	}
@@ -148,18 +156,17 @@ func (ss *ScheduleService) UpdateSchedule(ctx context.Context, req dto.UpdateSch
 	}
 
 	if req.DayOfWeek != nil {
-		if *req.DayOfWeek < 0 || *req.DayOfWeek > 7 {
+		if *req.DayOfWeek < 0 || *req.DayOfWeek > 6 {
 			return dto.ScheduleResponse{}, constants.ErrInvalidDayOfWeek
 		}
 		schedule.DayOfWeek = *req.DayOfWeek
 	}
 
 	if req.OpenTime != nil {
-		schedule.OpenTime = *req.OpenTime
+		schedule.OpenTime = req.OpenTime.In(loc)
 	}
-
 	if req.CloseTime != nil {
-		schedule.CloseTime = *req.CloseTime
+		schedule.CloseTime = req.CloseTime.In(loc)
 	}
 
 	if !schedule.CloseTime.After(schedule.OpenTime) {
@@ -183,6 +190,8 @@ func (ss *ScheduleService) UpdateSchedule(ctx context.Context, req dto.UpdateSch
 }
 
 func (ss *ScheduleService) DeleteScheduleByID(ctx context.Context, req dto.DeleteScheduleRequest) (dto.ScheduleResponse, error) {
+	loc := helpers.GetAppLocation()
+	
 	if _, err := uuid.Parse(req.ScheduleID); err != nil {
 		return dto.ScheduleResponse{}, constants.ErrInvalidUUID
 	}
@@ -201,14 +210,16 @@ func (ss *ScheduleService) DeleteScheduleByID(ctx context.Context, req dto.Delet
 		FieldID:    schedule.FieldID,
 		DayOfWeek:  schedule.DayOfWeek,
 		DayName:    helpers.DayIntToName(schedule.DayOfWeek),
-		OpenTime:   schedule.OpenTime.UTC().Format("15:04"),
-		CloseTime:  schedule.CloseTime.UTC().Format("15:04"),
+		OpenTime:   schedule.OpenTime.In(loc).Format("15:04"),
+		CloseTime:  schedule.CloseTime.In(loc).Format("15:04"),
 	}
 
 	return res, nil
 }
 
 func (ss *ScheduleService) GetSchedulesByFieldID(ctx context.Context, fieldID string) ([]dto.ScheduleResponse, error) {
+	loc := helpers.GetAppLocation()
+	
 	if _, err := uuid.Parse(fieldID); err != nil {
 		return nil, constants.ErrInvalidUUID
 	}
@@ -225,14 +236,16 @@ func (ss *ScheduleService) GetSchedulesByFieldID(ctx context.Context, fieldID st
 			FieldID:    s.FieldID,
 			DayOfWeek:  s.DayOfWeek,
 			DayName:    helpers.DayIntToName(s.DayOfWeek),
-			OpenTime:   s.OpenTime.UTC().Format("15:04"),
-			CloseTime:  s.CloseTime.UTC().Format("15:04"),
+			OpenTime:   s.OpenTime.In(loc).Format("15:04"),
+			CloseTime:  s.CloseTime.In(loc).Format("15:04"),
 		})
 	}
 	return res, nil
 }
 
 func (ss *ScheduleService) GetScheduleByFieldIDAndDay(ctx context.Context, fieldID string, day int) (dto.ScheduleResponse, error) {
+	loc := helpers.GetAppLocation()
+	
 	if _, err := uuid.Parse(fieldID); err != nil {
 		return dto.ScheduleResponse{}, constants.ErrInvalidUUID
 	}
@@ -247,8 +260,8 @@ func (ss *ScheduleService) GetScheduleByFieldIDAndDay(ctx context.Context, field
 		FieldID:    s.FieldID,
 		DayOfWeek:  s.DayOfWeek,
 		DayName:    helpers.DayIntToName(s.DayOfWeek),
-		OpenTime:   s.OpenTime.UTC().Format("15:04"),
-		CloseTime:  s.CloseTime.UTC().Format("15:04"),
+		OpenTime:   s.OpenTime.In(loc).Format("15:04"),
+		CloseTime:  s.CloseTime.In(loc).Format("15:04"),
 	}
 
 	return res, nil
