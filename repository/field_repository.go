@@ -49,6 +49,7 @@ func (fr *FieldRepository) GetAllFieldWithPagination(ctx context.Context, tx *go
 	var fields []model.Field
 	var count int64
 
+	// Default pagination jika kosong
 	if req.PaginationRequest.PerPage == 0 {
 		req.PaginationRequest.PerPage = 10
 	}
@@ -56,36 +57,27 @@ func (fr *FieldRepository) GetAllFieldWithPagination(ctx context.Context, tx *go
 		req.PaginationRequest.Page = 1
 	}
 
-	// Join ke tabel categories
-	query := tx.WithContext(ctx).
-		Model(&model.Field{}).
-		Joins("LEFT JOIN categories ON categories.category_id = fields.category_id").
-		Preload("Category")
+	// Base query
+	query := tx.WithContext(ctx).Model(&model.Field{})
 
-	// Search di field_name, field_address, field_price, category.name
-	if search := strings.TrimSpace(req.PaginationRequest.Search); search != "" {
-		searchValue := "%" + strings.ToLower(search) + "%"
-
-		query = query.Where(`
-			LOWER(fields.field_name) LIKE ? OR
-			LOWER(fields.field_address) LIKE ? OR
-			CAST(fields.field_price AS TEXT) LIKE ? OR
-			LOWER(categories.name) LIKE ?`,
-			searchValue, searchValue, searchValue, searchValue,
-		)
+	// Search
+	if req.PaginationRequest.Search != "" {
+		searchValue := "%" + strings.ToLower(req.PaginationRequest.Search) + "%"
+		query = query.Where("LOWER(field_name) LIKE ?", searchValue) // <== diperbaiki dari "feild_name"
 	}
 
+	// Filter FieldID jika diberikan
 	if req.FieldID != "" {
-		query = query.Where("fields.field_id = ?", req.FieldID)
+		query = query.Where("field_id = ?", req.FieldID)
 	}
 
+	// Hitung total data
 	if err := query.Count(&count).Error; err != nil {
 		return dto.FieldPaginationRepositoryResponse{}, err
 	}
 
-	if err := query.Order("fields.created_at DESC").
-		Scopes(Paginate(req.PaginationRequest.Page, req.PaginationRequest.PerPage)).
-		Find(&fields).Error; err != nil {
+	// Ambil data sesuai pagination
+	if err := query.Order("created_at DESC").Scopes(Paginate(req.PaginationRequest.Page, req.PaginationRequest.PerPage)).Find(&fields).Error; err != nil {
 		return dto.FieldPaginationRepositoryResponse{}, err
 	}
 
@@ -154,4 +146,3 @@ func (fr *FieldRepository) GetAllWithSchedules(ctx context.Context, tx *gorm.DB)
 		Find(&fields).Error
 	return fields, err
 }
-

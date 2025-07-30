@@ -17,7 +17,7 @@ func DayIntToName(day int) string {
 	case constants.Friday:
 		return "Friday"
 	case constants.Saturday:
-		return "Sabtu"
+		return "Saturday"
 	default:
 		return "Day Invalid"
 	}

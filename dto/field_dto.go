@@ -51,14 +51,17 @@ type (
 		FieldID string `json:"-"`
 	}
 
+
+	// Paginate
+	
 	FieldPaginationRequest struct {
 		PaginationRequest
 		FieldID string `form:"field_id"`
 	}
 
 	FieldPaginationResponse struct {
-		PaginationResponse
 		Data []FieldResponse `json:"data"`
+		PaginationResponse 
 	}
 
 	FieldPaginationRepositoryResponse struct {

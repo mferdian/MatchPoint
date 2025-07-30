@@ -44,7 +44,7 @@ func (us *UserService) CreateUser(ctx context.Context, req dto.CreateUserRequest
 	}
 
 	_, flag, err := us.userRepo.GetUserByEmail(ctx, nil, req.Email)
-	if flag || err == nil {
+	if flag && err == nil {
 		return dto.UserResponse{}, constants.ErrEmailAlreadyExists
 	}
 
@@ -52,16 +52,11 @@ func (us *UserService) CreateUser(ctx context.Context, req dto.CreateUserRequest
 		return dto.UserResponse{}, constants.ErrInvalidPassword
 	}
 
-	hashedPassword, err := helpers.HashPassword(req.Password)
-	if err != nil {
-		return dto.UserResponse{}, constants.ErrHashPassword
-	}
-
 	user := model.User{
 		UserID:   uuid.New(),
 		Name:     req.Name,
 		Email:    req.Email,
-		Password: hashedPassword,
+		Password: req.Password,
 		Role:     constants.ENUM_ROLE_USER,
 	}
 
@@ -92,7 +87,6 @@ func (us *UserService) GetUserByEmail(ctx context.Context, req dto.LoginUserRequ
 	if !flag || err != nil {
 		return dto.LoginResponse{}, constants.ErrEmailNotFound
 	}
-
 	checkPassword, err := helpers.CheckPassword(user.Password, []byte(req.Password))
 	if err != nil || !checkPassword {
 		return dto.LoginResponse{}, constants.ErrPasswordNotMatch

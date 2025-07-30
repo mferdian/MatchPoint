@@ -7,16 +7,13 @@ import (
 )
 
 func Seed(db *gorm.DB) error {
-	err := SeedFromJSON[model.User](db, "./migrations/json/users.json", model.User{}, "Email")
-	if err != nil {
+	if err := SeedFromJSON[model.User](db, "./migrations/json/users.json", model.User{}, "Email"); err != nil {
 		return err
 	}
-	// err = SeedFromJSON[model.Category](db, "./migrations/json/category.json", model.Category{}, "Name")
-	// if err != nil {
-	// 	return err
-	// }
 
-
+	if err := SeedFromJSON[model.Category](db, "./migrations/json/category.json", model.Category{}, "Name"); err != nil {
+		return err
+	}
 
 	return nil
 }

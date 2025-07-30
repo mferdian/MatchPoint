@@ -61,11 +61,9 @@ func (fs *FieldService) CreateField(ctx context.Context, req dto.CreateFieldRequ
 		FieldAddress: field.FieldAddress,
 		FieldPrice:   field.FieldPrice,
 		FieldImage:   field.FieldImage,
-		CategoryID: field.CategoryID,
+		CategoryID:   field.CategoryID,
 	}, nil
 }
-
-
 
 func (fs *FieldService) GetAllFieldWithPagination(ctx context.Context, req dto.FieldPaginationRequest) (dto.FieldPaginationResponse, error) {
 	dataWithPaginate, err := fs.fieldRepo.GetAllFieldWithPagination(ctx, nil, req)
@@ -81,6 +79,7 @@ func (fs *FieldService) GetAllFieldWithPagination(ctx context.Context, req dto.F
 			FieldAddress: field.FieldAddress,
 			FieldPrice:   field.FieldPrice,
 			FieldImage:   field.FieldImage,
+			CategoryID:   field.CategoryID,
 		}
 
 		datas = append(datas, data)
@@ -164,12 +163,11 @@ func (fs *FieldService) UpdateField(ctx context.Context, req dto.UpdateFieldRequ
 		FieldAddress: field.FieldAddress,
 		FieldPrice:   field.FieldPrice,
 		FieldImage:   field.FieldImage,
-		CategoryID: field.CategoryID,
+		CategoryID:   field.CategoryID,
 	}
 
 	return res, nil
 }
-
 
 func (fs *FieldService) DeleteField(ctx context.Context, req dto.DeleteFieldRequest) (dto.FieldResponse, error) {
 	if _, err := uuid.Parse(req.FieldID); err != nil {
@@ -192,7 +190,7 @@ func (fs *FieldService) DeleteField(ctx context.Context, req dto.DeleteFieldRequ
 		FieldAddress: deletedField.FieldAddress,
 		FieldPrice:   deletedField.FieldPrice,
 		FieldImage:   deletedField.FieldImage,
-		CategoryID: deletedField.CategoryID,
+		CategoryID:   deletedField.CategoryID,
 	}
 
 	return res, nil
