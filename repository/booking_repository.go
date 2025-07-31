@@ -20,7 +20,8 @@ type (
 		UpdateBooking(ctx context.Context, tx *gorm.DB, booking model.Booking) error
 		DeleteBooking(ctx context.Context, tx *gorm.DB, bookingID string) error
 		CheckBookingOverlap(ctx context.Context, tx *gorm.DB, fieldID uuid.UUID, bookingDate time.Time, startTime, endTime time.Time) (bool, error)
-
+		GetWaitingVerificationBookings(ctx context.Context, tx *gorm.DB) ([]model.Booking, error)
+		UpdateBookingStatus(ctx context.Context, tx *gorm.DB, bookingID uuid.UUID, newStatus string) error
 	}
 
 	BookingRepository struct {
@@ -149,21 +150,49 @@ func (br *BookingRepository) DeleteBooking(ctx context.Context, tx *gorm.DB, boo
 }
 
 func (br *BookingRepository) CheckBookingOverlap(ctx context.Context, tx *gorm.DB, fieldID uuid.UUID, bookingDate time.Time, startTime, endTime time.Time) (bool, error) {
-    if tx == nil {
-        tx = br.db
-    }
+	if tx == nil {
+		tx = br.db
+	}
 
-    var count int64
-    err := tx.WithContext(ctx).
-        Model(&model.Booking{}).
-        Where("field_id = ? AND booking_date = ? AND status != ?", fieldID, bookingDate, "cancelled").
-        Where("? < end_time AND ? > start_time", startTime, endTime).
-        Count(&count).Error
+	var count int64
+	err := tx.WithContext(ctx).
+		Model(&model.Booking{}).
+		Where("field_id = ? AND booking_date = ? AND status != ?", fieldID, bookingDate, "cancelled").
+		Where("? < end_time AND ? > start_time", startTime, endTime).
+		Count(&count).Error
 
-    if err != nil {
-        return false, err
-    }
+	if err != nil {
+		return false, err
+	}
 
-    return count > 0, nil
+	return count > 0, nil
 }
 
+
+func (br *BookingRepository) GetWaitingVerificationBookings(ctx context.Context, tx *gorm.DB) ([]model.Booking, error) {
+	if tx == nil {
+		tx = br.db
+	}
+
+	var bookings []model.Booking
+	err := tx.WithContext(ctx).
+		Preload("Field").
+		Preload("Field.Category").
+		Where("status = ?", "waiting_verification").
+		Order("booking_date, start_time").
+		Find(&bookings).Error
+
+	return bookings, err
+}
+
+
+func (br *BookingRepository) UpdateBookingStatus(ctx context.Context, tx *gorm.DB, bookingID uuid.UUID, newStatus string) error {
+	if tx == nil {
+		tx = br.db
+	}
+
+	return tx.WithContext(ctx).
+		Model(&model.Booking{}).
+		Where("booking_id = ?", bookingID).
+		Update("status", newStatus).Error
+}

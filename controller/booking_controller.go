@@ -16,7 +16,8 @@ type (
 		CreateBooking(ctx *gin.Context)
 		GetAllBooking(ctx *gin.Context)
 		GetBookingByID(ctx *gin.Context)
-		UpdateBooking(ctx *gin.Context)
+		GetUserBookingHistory(ctx *gin.Context)
+		UpdateStatusBooking(ctx *gin.Context)
 		DeleteBooking(ctx *gin.Context)
 	}
 
@@ -31,7 +32,7 @@ func NewBookingController(bookingService service.IBookingService) *BookingContro
 	}
 }
 
-// POST /bookings
+// POST /bookings (User)
 func (bc *BookingController) CreateBooking(ctx *gin.Context) {
 	var payload dto.CreateBookingRequest
 	if err := ctx.ShouldBind(&payload); err != nil {
@@ -51,7 +52,7 @@ func (bc *BookingController) CreateBooking(ctx *gin.Context) {
 	ctx.JSON(http.StatusCreated, res)
 }
 
-// GET /bookings
+// GET /bookings (Admin, Can Get All Booking)
 func (bc *BookingController) GetAllBooking(ctx *gin.Context) {
 	var payload dto.BookingPaginationRequest
 	if err := ctx.ShouldBind(&payload); err != nil {
@@ -71,7 +72,40 @@ func (bc *BookingController) GetAllBooking(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, res)
 }
 
-// GET /bookings/:id
+// Get (user, can get only user History)
+func (bc *BookingController) GetUserBookingHistory(ctx *gin.Context) {
+	var payload dto.BookingPaginationRequest
+	if err := ctx.ShouldBindQuery(&payload); err != nil {
+		res := utils.BuildResponseFailed(constants.MESSAGE_FAILED_GET_DATA_FROM_BODY, err.Error(), nil)
+		ctx.AbortWithStatusJSON(http.StatusBadRequest, res)
+		return
+	}
+
+	userID := ctx.GetString("user_id")
+	
+	// Inject user ID ke payload
+	payload.UserID = userID
+
+	result, err := bc.bookingService.GetUserBookingHistory(ctx.Request.Context(), payload)
+	if err != nil {
+		res := utils.BuildResponseFailed(constants.MESSAGE_FAILED_GET_ALL_BOOKING, err.Error(), nil)
+		ctx.AbortWithStatusJSON(http.StatusBadRequest, res)
+		return
+	}
+
+	// Format response pakai utils bawaan kamu
+	res := utils.Response{
+		Status:   true,
+		Messsage: constants.MESSAGE_SUCCESS_GET_ALL_BOOKING,
+		Data:     result.Data,
+		Meta:     result.PaginationResponse,
+	}
+	ctx.JSON(http.StatusOK, res)
+}
+
+
+
+// GET /bookings/:id (user)
 func (bc *BookingController) GetBookingByID(ctx *gin.Context) {
 	bookingID := ctx.Param("id")
 
@@ -92,8 +126,9 @@ func (bc *BookingController) GetBookingByID(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, res)
 }
 
-// PUT /bookings/:id
-func (bc *BookingController) UpdateBooking(ctx *gin.Context) {
+
+// PATCH /bookings/:id (Admin)
+func (bc *BookingController) UpdateStatusBooking(ctx *gin.Context) {
 	bookingID := ctx.Param("id")
 
 	if _, err := uuid.Parse(bookingID); err != nil {
@@ -102,7 +137,7 @@ func (bc *BookingController) UpdateBooking(ctx *gin.Context) {
 		return
 	}
 
-	var payload dto.UpdateBookingRequest
+	var payload dto.UpdateBookingStatusRequest
 	payload.BookingID = bookingID
 
 	if err := ctx.ShouldBind(&payload); err != nil {
@@ -111,7 +146,7 @@ func (bc *BookingController) UpdateBooking(ctx *gin.Context) {
 		return
 	}
 
-	result, err := bc.bookingService.UpdateBooking(ctx.Request.Context(), payload)
+	result, err := bc.bookingService.UpdateBookingStatus(ctx.Request.Context(), payload)
 	if err != nil {
 		res := utils.BuildResponseFailed(constants.MESSAGE_FAILED_UPDATE_BOOKING, err.Error(), nil)
 		ctx.AbortWithStatusJSON(http.StatusBadRequest, res)
@@ -122,7 +157,7 @@ func (bc *BookingController) UpdateBooking(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, res)
 }
 
-// DELETE /bookings/:id
+// DELETE /bookings/:id (Admin)
 func (bc *BookingController) DeleteBooking(ctx *gin.Context) {
 	bookingID := ctx.Param("id")
 

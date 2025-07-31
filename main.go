@@ -51,7 +51,7 @@ func main() {
 		scheduleController = controller.NewScheduleController(scheduleService)
 
 		bookingRepo = repository.NewBookingRepository(db)
-		bookingService = service.NewBookingService(bookingRepo, jwtService, scheduleRepo)
+		bookingService = service.NewBookingService(bookingRepo, jwtService, scheduleRepo, fieldRepo)
 		bookingController = controller.NewBookingController(bookingService)
 	)
 

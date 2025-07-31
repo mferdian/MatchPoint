@@ -34,4 +34,11 @@ func AdminRoutes(r *gin.Engine, userController controller.IUserController, categ
 	admin.PATCH("/update-schedule/:id", scheduleController.UpdateSchedule)
 	admin.DELETE("/delete-schedule/:id", scheduleController.DeleteSchedule)
 	admin.GET("/get-all-schedule", scheduleController.GetAllSchedule)
+
+	// Booking Management
+	admin.GET("/get-all-bookings", bookingController.GetAllBooking)
+	admin.GET("/get-booking/:id", bookingController.GetBookingByID)
+	admin.PATCH("/update-booking/:id", bookingController.UpdateStatusBooking)
+	admin.DELETE("/delete-booking/:id", bookingController.DeleteBooking)
+
 }

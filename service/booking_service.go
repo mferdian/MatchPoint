@@ -7,7 +7,8 @@ import (
 	"fieldreserve/helpers"
 	"fieldreserve/model"
 	"fieldreserve/repository"
-	"fmt"
+	"math"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -17,8 +18,9 @@ type (
 	IBookingService interface {
 		CreateBooking(ctx context.Context, req dto.CreateBookingRequest) (dto.BookingResponse, error)
 		GetAllBooking(ctx context.Context, req dto.BookingPaginationRequest) (dto.BookingPaginationResponse, error)
+		GetUserBookingHistory(ctx context.Context, req dto.BookingPaginationRequest) (dto.BookingPaginationResponse, error)
 		GetBookingByID(ctx context.Context, bookingID string) (dto.BookingFullResponse, error)
-		UpdateBooking(ctx context.Context, req dto.UpdateBookingRequest) (dto.BookingResponse, error)
+		UpdateBookingStatus(ctx context.Context, req dto.UpdateBookingStatusRequest) (dto.BookingResponse, error)
 		DeleteBooking(ctx context.Context, req dto.DeleteBookingRequest) (dto.BookingResponse, error)
 	}
 
@@ -26,6 +28,7 @@ type (
 		bookingRepo  repository.IBookingRepository
 		jwtService   InterfaceJWTService
 		scheduleRepo repository.IScheduleRepository
+		fieldRepo    repository.IFieldRepository
 	}
 )
 
@@ -33,24 +36,26 @@ func NewBookingService(
 	bookingRepo repository.IBookingRepository,
 	jwtService InterfaceJWTService,
 	scheduleRepo repository.IScheduleRepository,
+	fieldRepo repository.IFieldRepository,
 ) *BookingService {
 	return &BookingService{
 		bookingRepo:  bookingRepo,
 		jwtService:   jwtService,
 		scheduleRepo: scheduleRepo,
+		fieldRepo:    fieldRepo,
 	}
 }
 
 func (bs *BookingService) CreateBooking(ctx context.Context, req dto.CreateBookingRequest) (dto.BookingResponse, error) {
 	loc := helpers.GetAppLocation()
 
-	// Ambil token dari context
-	tokenString, ok := ctx.Value("token").(string)
-	if !ok || tokenString == "" {
+	// === [1] Extract Token & User ID ===
+	tokenStr, ok := ctx.Value("token").(string)
+	if !ok || tokenStr == "" {
 		return dto.BookingResponse{}, constants.ErrUnauthorized
 	}
 
-	userIDStr, err := bs.jwtService.GetUserIDByToken(tokenString)
+	userIDStr, err := bs.jwtService.GetUserIDByToken(tokenStr)
 	if err != nil {
 		return dto.BookingResponse{}, constants.ErrUnauthorized
 	}
@@ -60,83 +65,109 @@ func (bs *BookingService) CreateBooking(ctx context.Context, req dto.CreateBooki
 		return dto.BookingResponse{}, constants.ErrInvalidUUID
 	}
 
+	// === [2] Parse Field ID ===
 	fieldID, err := uuid.Parse(req.FieldID)
 	if err != nil {
 		return dto.BookingResponse{}, constants.ErrInvalidUUID
 	}
 
-	// Parsing tanggal dan waktu booking (string)
+	// === [3] Parse Booking Date & Time ===
 	bookingDate, err := time.ParseInLocation("2006-01-02", req.BookingDate, loc)
 	if err != nil {
 		return dto.BookingResponse{}, constants.ErrInvalidBookingDate
 	}
 
-	startParsed, err := time.ParseInLocation("15:04", req.StartTime, loc)
+	startTimeParsed, err := time.ParseInLocation("15:04", req.StartTime, loc)
 	if err != nil {
 		return dto.BookingResponse{}, constants.ErrInvalidTimeFormat
 	}
-	endParsed, err := time.ParseInLocation("15:04", req.EndTime, loc)
+	endTimeParsed, err := time.ParseInLocation("15:04", req.EndTime, loc)
 	if err != nil {
 		return dto.BookingResponse{}, constants.ErrInvalidTimeFormat
 	}
 
-	// Gabungkan tanggal booking + jam
-	startTime := time.Date(bookingDate.Year(), bookingDate.Month(), bookingDate.Day(),
-		startParsed.Hour(), startParsed.Minute(), 0, 0, loc)
+	startTime := time.Date(bookingDate.Year(), bookingDate.Month(), bookingDate.Day(), startTimeParsed.Hour(), startTimeParsed.Minute(), 0, 0, loc)
+	endTime := time.Date(bookingDate.Year(), bookingDate.Month(), bookingDate.Day(), endTimeParsed.Hour(), endTimeParsed.Minute(), 0, 0, loc)
 
-	endTime := time.Date(bookingDate.Year(), bookingDate.Month(), bookingDate.Day(),
-		endParsed.Hour(), endParsed.Minute(), 0, 0, loc)
-
-	// Validasi minimal 2 jam dari sekarang
+	// === [4] Validasi Waktu ===
 	now := time.Now().In(loc)
 	if startTime.Before(now.Add(2 * time.Hour)) {
 		return dto.BookingResponse{}, constants.ErrBookingTooSoon
 	}
+	if !endTime.After(startTime) {
+		return dto.BookingResponse{}, constants.ErrInvalidTimeRange
+	}
 
-	// Ambil schedule field di hari tersebut
-	dayOfWeek := int(bookingDate.Weekday()) // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+	// === [5] Validasi Field ===
+	field, _, err := bs.fieldRepo.GetFieldByID(ctx, nil, req.FieldID)
+	if err != nil {
+		return dto.BookingResponse{}, constants.ErrFieldNotFound
+	}
+
+	durationHours := endTime.Sub(startTime).Hours()
+	expectedTotal := float64(field.FieldPrice) * durationHours
+	if math.Abs(req.TotalPayment-expectedTotal) > 1 {
+		return dto.BookingResponse{}, constants.ErrInvalidTotalPayment
+	}
+
+	// === [6] Validasi Jadwal Field ===
+	dayOfWeek := int(bookingDate.Weekday())
 	schedule, err := bs.scheduleRepo.GetScheduleByFieldIDAndDay(ctx, nil, req.FieldID, dayOfWeek)
 	if err != nil {
 		return dto.BookingResponse{}, constants.ErrScheduleNotFound
 	}
 
-	// Buat open-close time dari schedule (dalam zona waktu Asia/Jakarta)
-	openTime := time.Date(bookingDate.Year(), bookingDate.Month(), bookingDate.Day(),
-		schedule.OpenTime.Hour(), schedule.OpenTime.Minute(), 0, 0, loc)
-	closeTime := time.Date(bookingDate.Year(), bookingDate.Month(), bookingDate.Day(),
-		schedule.CloseTime.Hour(), schedule.CloseTime.Minute(), 0, 0, loc)
-
+	openTime := time.Date(bookingDate.Year(), bookingDate.Month(), bookingDate.Day(), schedule.OpenTime.Hour(), schedule.OpenTime.Minute(), 0, 0, loc)
+	closeTime := time.Date(bookingDate.Year(), bookingDate.Month(), bookingDate.Day(), schedule.CloseTime.Hour(), schedule.CloseTime.Minute(), 0, 0, loc)
 	if startTime.Before(openTime) || endTime.After(closeTime) {
 		return dto.BookingResponse{}, constants.ErrOutsideOperatingHours
 	}
 
-	// Validasi tabrakan waktu booking
+	// === [7] Validasi Overlap Booking ===
 	overlap, err := bs.bookingRepo.CheckBookingOverlap(ctx, nil, fieldID, bookingDate, startTime, endTime)
 	if err != nil {
 		return dto.BookingResponse{}, constants.ErrCheckOverlap
 	}
-
 	if overlap {
 		return dto.BookingResponse{}, constants.ErrBookingOverlap
 	}
 
-	// Buat model booking
+	// === [8] Handle Bukti Pembayaran (Opsional) ===
+	var proofPath string
+	var paymentUploadedAt *time.Time
+	status := "pending"
+
+	if req.ProofPayment != nil {
+		imageName, err := helpers.SaveImage(req.ProofPayment, "./assets/proof", "proof")
+		if err != nil {
+			return dto.BookingResponse{}, constants.ErrSaveImages
+		}
+		proofPath = imageName
+		status = "waiting_verification"
+		now := time.Now().In(loc)
+		paymentUploadedAt = &now
+	}
+
+	// === [9] Simpan Booking ===
 	booking := model.Booking{
-		BookingID:     uuid.New(),
-		UserID:        userID,
-		FieldID:       fieldID,
-		PaymentMethod: req.PaymentMethod,
-		BookingDate:   bookingDate,
-		StartTime:     startTime,
-		EndTime:       endTime,
-		Status:        "pending",
+		BookingID:         uuid.New(),
+		UserID:            userID,
+		FieldID:           fieldID,
+		PaymentMethod:     req.PaymentMethod,
+		BookingDate:       bookingDate,
+		StartTime:         startTime,
+		EndTime:           endTime,
+		TotalPayment:      req.TotalPayment,
+		ProofPayment:      proofPath,
+		Status:            status,
+		PaymentUploadedAt: paymentUploadedAt,
 	}
 
 	if err := bs.bookingRepo.CreateBooking(ctx, nil, booking); err != nil {
 		return dto.BookingResponse{}, constants.ErrCreateBooking
 	}
 
-	// Build response
+	// === [10] Return DTO Response ===
 	return dto.BookingResponse{
 		BookingID:     booking.BookingID,
 		UserID:        booking.UserID,
@@ -145,7 +176,9 @@ func (bs *BookingService) CreateBooking(ctx context.Context, req dto.CreateBooki
 		BookingDate:   booking.BookingDate,
 		StartTime:     booking.StartTime,
 		EndTime:       booking.EndTime,
+		TotalPayment:  booking.TotalPayment,
 		Status:        booking.Status,
+		ProofPayment:  booking.ProofPayment,
 	}, nil
 }
 
@@ -158,14 +191,57 @@ func (bs *BookingService) GetAllBooking(ctx context.Context, req dto.BookingPagi
 	var datas []dto.BookingResponse
 	for _, booking := range dataWithPaginate.Bookings {
 		data := dto.BookingResponse{
-			BookingID:     booking.BookingID,
-			UserID:        booking.UserID,
-			FieldID:       booking.FieldID,
-			PaymentMethod: booking.PaymentMethod,
-			BookingDate:   booking.BookingDate,
-			StartTime:     booking.StartTime,
-			EndTime:       booking.EndTime,
-			Status:        booking.Status,
+			BookingID:         booking.BookingID,
+			UserID:            booking.UserID,
+			FieldID:           booking.FieldID,
+			PaymentMethod:     booking.PaymentMethod,
+			BookingDate:       booking.BookingDate,
+			StartTime:         booking.StartTime,
+			EndTime:           booking.EndTime,
+			Status:            booking.Status,
+			TotalPayment:      booking.TotalPayment,
+			ProofPayment:      booking.ProofPayment,
+			PaymentUploadedAt: booking.PaymentUploadedAt,
+			PaymentVerifiedAt: booking.PaymentVerifiedAt,
+			CancelledAt:       booking.CancelledAt,
+		}
+
+		datas = append(datas, data)
+	}
+
+	return dto.BookingPaginationResponse{
+		Data: datas,
+		PaginationResponse: dto.PaginationResponse{
+			Page:    dataWithPaginate.Page,
+			PerPage: dataWithPaginate.PerPage,
+			MaxPage: dataWithPaginate.MaxPage,
+			Count:   dataWithPaginate.Count,
+		},
+	}, nil
+}
+
+func (bs *BookingService) GetUserBookingHistory(ctx context.Context, req dto.BookingPaginationRequest) (dto.BookingPaginationResponse, error) {
+	dataWithPaginate, err := bs.bookingRepo.GetAllBooking(ctx, nil, req)
+	if err != nil {
+		return dto.BookingPaginationResponse{}, constants.ErrGetAllField
+	}
+
+	var datas []dto.BookingResponse
+	for _, booking := range dataWithPaginate.Bookings {
+		data := dto.BookingResponse{
+			BookingID:         booking.BookingID,
+			UserID:            booking.UserID,
+			FieldID:           booking.FieldID,
+			PaymentMethod:     booking.PaymentMethod,
+			BookingDate:       booking.BookingDate,
+			StartTime:         booking.StartTime,
+			EndTime:           booking.EndTime,
+			Status:            booking.Status,
+			TotalPayment:      booking.TotalPayment,
+			ProofPayment:      booking.ProofPayment,
+			PaymentUploadedAt: booking.PaymentUploadedAt,
+			PaymentVerifiedAt: booking.PaymentVerifiedAt,
+			CancelledAt:       booking.CancelledAt,
 		}
 
 		datas = append(datas, data)
@@ -209,86 +285,79 @@ func (bs *BookingService) GetBookingByID(ctx context.Context, bookingID string) 
 	}
 
 	res := dto.BookingFullResponse{
-		BookingID:     booking.BookingID,
-		UserID:        booking.UserID,
-		PaymentMethod: booking.PaymentMethod,
-		BookingDate:   booking.BookingDate,
-		StartTime:     booking.StartTime,
-		EndTime:       booking.EndTime,
-		Status:        booking.Status,
-		Field:         fieldDTO,
+		BookingID:         booking.BookingID,
+		UserID:            booking.UserID,
+		PaymentMethod:     booking.PaymentMethod,
+		BookingDate:       booking.BookingDate,
+		StartTime:         booking.StartTime,
+		EndTime:           booking.EndTime,
+		Status:            booking.Status,
+		TotalPayment:      booking.TotalPayment,
+		ProofPayment:      booking.ProofPayment,
+		PaymentUploadedAt: booking.PaymentUploadedAt,
+		PaymentVerifiedAt: booking.PaymentVerifiedAt,
+		CancelledAt:       booking.CancelledAt,
+		Field:             fieldDTO,
 	}
 
 	return res, nil
 }
 
-func (bs *BookingService) UpdateBooking(ctx context.Context, req dto.UpdateBookingRequest) (dto.BookingResponse, error) {
+func (bs *BookingService) UpdateBookingStatus(ctx context.Context, req dto.UpdateBookingStatusRequest) (dto.BookingResponse, error) {
+	loc := helpers.GetAppLocation()
+
+	// // ====== 1. Validasi UUID Booking ID ======
 	if _, err := uuid.Parse(req.BookingID); err != nil {
 		return dto.BookingResponse{}, constants.ErrInvalidUUID
 	}
 
+	// ====== 2. Ambil Booking dari Database ======
 	booking, _, err := bs.bookingRepo.GetBookingByID(ctx, nil, req.BookingID)
 	if err != nil {
-		return dto.BookingResponse{}, constants.ErrGetBookingByID
+		return dto.BookingResponse{}, constants.ErrBookingNotFound
 	}
 
-	loc, _ := time.LoadLocation("Asia/Jakarta")
-
-	if req.FieldID != nil {
-		fieldUUID, err := uuid.Parse(*req.FieldID)
-		if err != nil {
-			return dto.BookingResponse{}, constants.ErrInvalidUUID
-		}
-		booking.FieldID = fieldUUID
+	// ====== 3. Cek Status Saat Ini ======
+	if booking.Status == "cancelled" || booking.Status == "booked" {
+		return dto.BookingResponse{}, constants.ErrBookingAlreadyFinal
 	}
 
-	if req.PaymentMethod != nil {
-		booking.PaymentMethod = *req.PaymentMethod
+	// ====== 4. Validasi Status Baru ======
+	newStatus := strings.ToLower(*req.Status)
+	if newStatus != "cancelled" && newStatus != "booked" {
+		return dto.BookingResponse{}, constants.ErrInvalidStatusUpdate
 	}
 
-	if req.BookingDate != nil {
-		date, err := time.ParseInLocation("2006-01-02", *req.BookingDate, loc)
-		if err != nil {
-			return dto.BookingResponse{}, constants.ErrInvalidBookingDate
-		}
-		booking.BookingDate = date
+	// ====== 5. Update Status & Timestamp ======
+	now := time.Now().In(loc)
+	booking.Status = newStatus
+
+	if newStatus == "booked" {
+		booking.PaymentVerifiedAt = &now
+	} else if newStatus == "cancelled" {
+		booking.CancelledAt = &now
 	}
 
-	if req.StartTime != nil {
-		startDateTimeStr := fmt.Sprintf("%sT%s:00", booking.BookingDate.Format("2006-01-02"), *req.StartTime)
-		startDateTime, err := time.ParseInLocation("2006-01-02T15:04:05", startDateTimeStr, loc)
-		if err != nil {
-			return dto.BookingResponse{}, constants.ErrInvalidStartTime
-		}
-		booking.StartTime = startDateTime
-	}
-
-	if req.EndTime != nil {
-		endDateTimeStr := fmt.Sprintf("%sT%s:00", booking.BookingDate.Format("2006-01-02"), *req.EndTime)
-		endDateTime, err := time.ParseInLocation("2006-01-02T15:04:05", endDateTimeStr, loc)
-		if err != nil {
-			return dto.BookingResponse{}, fmt.Errorf("invalid end_time format: %w", err)
-		}
-		booking.EndTime = endDateTime
-	}
-
-	if req.Status != nil {
-		booking.Status = *req.Status
-	}
-
+	// ====== 6. Simpan ke Database ======
 	if err := bs.bookingRepo.UpdateBooking(ctx, nil, booking); err != nil {
 		return dto.BookingResponse{}, constants.ErrUpdateBooking
 	}
 
+	// ====== 7. Response DTO ======
 	return dto.BookingResponse{
-		BookingID:     booking.BookingID,
-		UserID:        booking.UserID,
-		FieldID:       booking.FieldID,
-		PaymentMethod: booking.PaymentMethod,
-		BookingDate:   booking.BookingDate,
-		StartTime:     booking.StartTime,
-		EndTime:       booking.EndTime,
-		Status:        booking.Status,
+		BookingID:         booking.BookingID,
+		UserID:            booking.UserID,
+		FieldID:           booking.FieldID,
+		BookingDate:       booking.BookingDate,
+		StartTime:         booking.StartTime,
+		EndTime:           booking.EndTime,
+		PaymentMethod:     booking.PaymentMethod,
+		TotalPayment:      booking.TotalPayment,
+		ProofPayment:      booking.ProofPayment,
+		Status:            booking.Status,
+		PaymentUploadedAt: booking.PaymentUploadedAt,
+		PaymentVerifiedAt: booking.PaymentVerifiedAt,
+		CancelledAt:       booking.CancelledAt,
 	}, nil
 }
 
@@ -314,13 +383,18 @@ func (bs *BookingService) DeleteBooking(ctx context.Context, req dto.DeleteBooki
 	}
 
 	return dto.BookingResponse{
-		BookingID:     booking.BookingID,
-		UserID:        booking.UserID,
-		FieldID:       booking.FieldID,
-		PaymentMethod: booking.PaymentMethod,
-		BookingDate:   booking.BookingDate,
-		StartTime:     booking.StartTime,
-		EndTime:       booking.EndTime,
-		Status:        booking.Status,
+		BookingID:         booking.BookingID,
+		UserID:            booking.UserID,
+		FieldID:           booking.FieldID,
+		BookingDate:       booking.BookingDate,
+		StartTime:         booking.StartTime,
+		EndTime:           booking.EndTime,
+		PaymentMethod:     booking.PaymentMethod,
+		TotalPayment:      booking.TotalPayment,
+		ProofPayment:      booking.ProofPayment,
+		Status:            booking.Status,
+		PaymentUploadedAt: booking.PaymentUploadedAt,
+		PaymentVerifiedAt: booking.PaymentVerifiedAt,
+		CancelledAt:       booking.CancelledAt,
 	}, nil
 }

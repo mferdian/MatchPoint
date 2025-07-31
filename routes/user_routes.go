@@ -38,9 +38,7 @@ func UserRoutes(
 	user.GET("/get-schedule-by-day/:field_id/day/:day", scheduleController.GetScheduleByFieldIDAndDay)
 
 	user.POST("/create-booking", bookingController.CreateBooking)
-	user.GET("/get-all-bookings", bookingController.GetAllBooking)      
-	user.GET("/get-booking/:id", bookingController.GetBookingByID)      
-	user.PATCH("/update-booking/:id", bookingController.UpdateBooking) 
-	user.DELETE("/delete-booking/:id", bookingController.DeleteBooking)
+	user.GET("booking/:id", bookingController.GetBookingByID)
+	user.GET("/bookings", bookingController.GetUserBookingHistory)
 
 }
