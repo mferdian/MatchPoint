@@ -40,5 +40,5 @@ func UserRoutes(
 	user.POST("/create-booking", bookingController.CreateBooking)
 	user.GET("booking/:id", bookingController.GetBookingByID)
 	user.GET("/bookings", bookingController.GetUserBookingHistory)
-
+	user.GET("/booking/:id/invoice", bookingController.DownloadInvoice)
 }

@@ -125,6 +125,7 @@ func (br *BookingRepository) GetBookingByID(ctx context.Context, tx *gorm.DB, bo
 	if err := tx.WithContext(ctx).
 		Preload("Field").
 		Preload("Field.Category").
+		Preload("User").
 		Where("booking_id = ?", bookingID).
 		Take(&booking).Error; err != nil {
 		return model.Booking{}, false, err

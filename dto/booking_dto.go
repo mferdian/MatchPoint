@@ -37,10 +37,17 @@ type (
 		CancelledAt       *time.Time `json:"cancelled_at,omitempty"`
 	}
 
+	UserCompactResponse struct {
+		ID      uuid.UUID `json:"user_id"`
+		Name    string    `json:"user_name"`
+		Email   string    `json:"user_email"`
+		Address string    `json:"address"`
+		NoTelp  string    `json:"no_telp"`
+	}
+
 	// Response Lengkap (untuk history / admin)
 	BookingFullResponse struct {
 		BookingID         uuid.UUID            `json:"booking_id"`
-		UserID            uuid.UUID            `json:"user_id"`
 		PaymentMethod     string               `json:"payment_method"`
 		BookingDate       time.Time            `json:"booking_date"`
 		StartTime         time.Time            `json:"start_time"`
@@ -48,6 +55,7 @@ type (
 		TotalPayment      float64              `json:"total_payment"`
 		ProofPayment      string               `json:"proof_payment"`
 		Status            string               `json:"status"`
+		User              UserCompactResponse  `json:"user"`
 		Field             FieldCompactResponse `json:"field"`
 		PaymentVerifiedAt *time.Time           `json:"payment_verified_at,omitempty"`
 		CancelledAt       *time.Time           `json:"cancelled_at,omitempty"`

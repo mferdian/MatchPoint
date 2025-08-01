@@ -37,6 +37,7 @@ const (
 	MESSAGE_FAILED_GET_DETAIL_BOOKING  = "failed get detail booking"
 	MESSAGE_FAILED_UPDATE_BOOKING      = "failed update booking"
 	MESSAGE_FAILED_DELETE_BOOKING      = "failed delete booking"
+	MESSAGE_FAILED_GET_BOOKING         = "failed get data booking"
 
 	// success
 	MESSAGE_SUCCESS_CREATE_USER         = "success create user"
@@ -141,7 +142,7 @@ var (
 	ErrInvalidStatusTransition = errors.New("invalid status transition for booking")
 	ErrBookingAlreadyFinal     = errors.New("booking has already been finalized and cannot be updated")
 	ErrInvalidStatusUpdate     = errors.New("invalid status update, only 'booked' or 'cancelled' allowed")
-	ErrBookingNotFound = errors.New("")
+	ErrBookingNotFound         = errors.New("")
 
 	// General errors
 	ErrInternalServer = errors.New("internal server error")

@@ -135,7 +135,7 @@ func (bs *BookingService) CreateBooking(ctx context.Context, req dto.CreateBooki
 	// === [8] Handle Bukti Pembayaran (Opsional) ===
 	var proofPath string
 	var paymentUploadedAt *time.Time
-	status := "pending"
+	status := constants.ENUM_STATUS_BOOKING_PENDING
 
 	if req.ProofPayment != nil {
 		imageName, err := helpers.SaveImage(req.ProofPayment, "./assets/proof", "proof")
@@ -143,7 +143,7 @@ func (bs *BookingService) CreateBooking(ctx context.Context, req dto.CreateBooki
 			return dto.BookingResponse{}, constants.ErrSaveImages
 		}
 		proofPath = imageName
-		status = "waiting_verification"
+		status = constants.ENUM_STATUS_BOOKING_WAITING
 		now := time.Now().In(loc)
 		paymentUploadedAt = &now
 	}
@@ -269,6 +269,7 @@ func (bs *BookingService) GetBookingByID(ctx context.Context, bookingID string) 
 	}
 
 	field := booking.Field
+	user := booking.User
 	category := field.Category
 
 	fieldDTO := dto.FieldCompactResponse{
@@ -284,9 +285,16 @@ func (bs *BookingService) GetBookingByID(ctx context.Context, bookingID string) 
 		},
 	}
 
+	userDTO := dto.UserCompactResponse{
+		ID:      user.UserID,
+		Name:    user.Name,
+		Email:   user.Email,
+		NoTelp:  user.NoTelp,
+		Address: user.Address,
+	}
+
 	res := dto.BookingFullResponse{
 		BookingID:         booking.BookingID,
-		UserID:            booking.UserID,
 		PaymentMethod:     booking.PaymentMethod,
 		BookingDate:       booking.BookingDate,
 		StartTime:         booking.StartTime,
@@ -297,6 +305,7 @@ func (bs *BookingService) GetBookingByID(ctx context.Context, bookingID string) 
 		PaymentUploadedAt: booking.PaymentUploadedAt,
 		PaymentVerifiedAt: booking.PaymentVerifiedAt,
 		CancelledAt:       booking.CancelledAt,
+		User:              userDTO,
 		Field:             fieldDTO,
 	}
 
@@ -318,13 +327,13 @@ func (bs *BookingService) UpdateBookingStatus(ctx context.Context, req dto.Updat
 	}
 
 	// ====== 3. Cek Status Saat Ini ======
-	if booking.Status == "cancelled" || booking.Status == "booked" {
+	if booking.Status == constants.ENUM_STATUS_BOOKING_CALCEL || booking.Status == constants.ENUM_STATUS_BOOKING_BOOKED {
 		return dto.BookingResponse{}, constants.ErrBookingAlreadyFinal
 	}
 
 	// ====== 4. Validasi Status Baru ======
 	newStatus := strings.ToLower(*req.Status)
-	if newStatus != "cancelled" && newStatus != "booked" {
+	if newStatus != constants.ENUM_STATUS_BOOKING_CALCEL && newStatus != constants.ENUM_STATUS_BOOKING_BOOKED {
 		return dto.BookingResponse{}, constants.ErrInvalidStatusUpdate
 	}
 
@@ -332,9 +341,9 @@ func (bs *BookingService) UpdateBookingStatus(ctx context.Context, req dto.Updat
 	now := time.Now().In(loc)
 	booking.Status = newStatus
 
-	if newStatus == "booked" {
+	if newStatus == constants.ENUM_STATUS_BOOKING_BOOKED {
 		booking.PaymentVerifiedAt = &now
-	} else if newStatus == "cancelled" {
+	} else if newStatus == constants.ENUM_STATUS_BOOKING_CALCEL {
 		booking.CancelledAt = &now
 	}
 

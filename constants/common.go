@@ -10,6 +10,11 @@ const (
 	ENUM_PAGINATION_LIMIT = 10
 	ENUM_PAGINATION_PAGE  = 1
 
+	ENUM_STATUS_BOOKING_PENDING = "pending"
+	ENUM_STATUS_BOOKING_WAITING = "waiting_verification"
+	ENUM_STATUS_BOOKING_CALCEL  = "cancelled"
+	ENUM_STATUS_BOOKING_BOOKED  = "booked"
+
 	Sunday    = 0
 	Monday    = 1
 	Tuesday   = 2

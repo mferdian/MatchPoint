@@ -5,6 +5,7 @@ import (
 	"fieldreserve/dto"
 	"fieldreserve/service"
 	"fieldreserve/utils"
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -19,6 +20,7 @@ type (
 		GetUserBookingHistory(ctx *gin.Context)
 		UpdateStatusBooking(ctx *gin.Context)
 		DeleteBooking(ctx *gin.Context)
+		DownloadInvoice(ctx *gin.Context)
 	}
 
 	BookingController struct {
@@ -179,4 +181,34 @@ func (bc *BookingController) DeleteBooking(ctx *gin.Context) {
 
 	res := utils.BuildResponseSuccess(constants.MESSAGE_SUCCESS_DELETE_BOOKING, result)
 	ctx.JSON(http.StatusOK, res)
+}
+
+
+// Download invoice 
+func (bc *BookingController) DownloadInvoice(ctx *gin.Context) {
+	bookingID := ctx.Param("id")
+
+	if _, err := uuid.Parse(bookingID); err != nil {
+		res := utils.BuildResponseFailed(constants.MESSAGE_FAILED_UUID_FORMAT, err.Error(), nil)
+		ctx.AbortWithStatusJSON(http.StatusBadRequest, res)
+		return
+	}
+
+	booking, err := bc.bookingService.GetBookingByID(ctx.Request.Context(), bookingID)
+	if err != nil {
+		res := utils.BuildResponseFailed(constants.MESSAGE_FAILED_GET_BOOKING, err.Error(), nil)
+		ctx.AbortWithStatusJSON(http.StatusNotFound, res)
+		return
+	}
+
+	pdfBytes, err := utils.GenerateInvoicePDF(booking)
+	if err != nil {
+		res := utils.BuildResponseFailed("Failed to generate invoice", err.Error(), nil)
+		ctx.AbortWithStatusJSON(http.StatusInternalServerError, res)
+		return
+	}
+
+	ctx.Header("Content-Type", "application/pdf")
+	ctx.Header("Content-Disposition", fmt.Sprintf("attachment; filename=invoice-%s.pdf", booking.BookingID))
+	ctx.Data(http.StatusOK, "application/pdf", pdfBytes)
 }
