@@ -7,8 +7,10 @@ import (
 	"fieldreserve/helpers"
 	"fieldreserve/model"
 	"fieldreserve/repository"
+	"fieldreserve/utils"
 
 	"github.com/google/uuid"
+	"github.com/sirupsen/logrus"
 )
 
 type (
@@ -62,8 +64,14 @@ func (us *UserService) CreateUser(ctx context.Context, req dto.CreateUserRequest
 
 	err = us.userRepo.CreateUser(ctx, nil, user)
 	if err != nil {
+		utils.Log.WithError(err).WithField("email", req.Email).Error("Failed to create user")
 		return dto.UserResponse{}, constants.ErrRegisterUser
 	}
+
+	utils.Log.WithFields(logrus.Fields{
+		"user_id": user.UserID,
+		"email":   user.Email,
+	}).Info("User created successfully")
 
 	res := dto.UserResponse{
 		ID:    user.UserID,
@@ -85,17 +93,26 @@ func (us *UserService) GetUserByEmail(ctx context.Context, req dto.LoginUserRequ
 
 	user, flag, err := us.userRepo.GetUserByEmail(ctx, nil, req.Email)
 	if !flag || err != nil {
+		utils.Log.WithField("email", req.Email).Warn("Login failed: email not found")
 		return dto.LoginResponse{}, constants.ErrEmailNotFound
 	}
+
 	checkPassword, err := helpers.CheckPassword(user.Password, []byte(req.Password))
 	if err != nil || !checkPassword {
+		utils.Log.WithField("email", req.Email).Warn("Login failed: password mismatch")
 		return dto.LoginResponse{}, constants.ErrPasswordNotMatch
 	}
 
 	accessToken, refreshToken, err := us.jwtService.GenerateToken(user.UserID.String(), user.Role)
 	if err != nil {
+		utils.Log.WithError(err).WithField("user_id", user.UserID).Error("Failed to generate token")
 		return dto.LoginResponse{}, err
 	}
+
+	utils.Log.WithFields(logrus.Fields{
+		"user_id": user.UserID,
+		"email":   user.Email,
+	}).Info("User login successful")
 
 	return dto.LoginResponse{
 		AccessToken:  accessToken,
@@ -109,8 +126,8 @@ func (us *UserService) GetuserByID(ctx context.Context, userID string) (dto.User
 	}
 
 	user, _, err := us.userRepo.GetUserByID(ctx, nil, userID)
-
 	if err != nil {
+		utils.Log.WithError(err).WithField("user_id", userID).Error("Failed to get user by ID")
 		return dto.UserResponse{}, constants.ErrGetUserByID
 	}
 
@@ -128,6 +145,7 @@ func (us *UserService) GetuserByID(ctx context.Context, userID string) (dto.User
 func (us *UserService) GetAllUserWithPagination(ctx context.Context, req dto.UserPaginationRequest) (dto.UserPaginationResponse, error) {
 	dataWithPaginate, err := us.userRepo.GetAllUserWithPagination(ctx, nil, req)
 	if err != nil {
+		utils.Log.WithError(err).Error("Failed to get all users with pagination")
 		return dto.UserPaginationResponse{}, constants.ErrGetAllUserWithPagination
 	}
 
@@ -140,7 +158,6 @@ func (us *UserService) GetAllUserWithPagination(ctx context.Context, req dto.Use
 			Address: user.Address,
 			NoTelp:  user.NoTelp,
 		}
-
 		datas = append(datas, data)
 	}
 
@@ -158,6 +175,7 @@ func (us *UserService) GetAllUserWithPagination(ctx context.Context, req dto.Use
 func (us *UserService) UpdateUser(ctx context.Context, req dto.UpdateUserRequest) (dto.UserResponse, error) {
 	user, _, err := us.userRepo.GetUserByID(ctx, nil, req.ID)
 	if err != nil {
+		utils.Log.WithError(err).WithField("user_id", req.ID).Error("Failed to get user for update")
 		return dto.UserResponse{}, constants.ErrGetUserByID
 	}
 
@@ -207,8 +225,14 @@ func (us *UserService) UpdateUser(ctx context.Context, req dto.UpdateUserRequest
 
 	err = us.userRepo.UpdateUser(ctx, nil, user)
 	if err != nil {
+		utils.Log.WithError(err).WithField("user_id", user.UserID).Error("Failed to update user")
 		return dto.UserResponse{}, constants.ErrUpdateUser
 	}
+
+	utils.Log.WithFields(logrus.Fields{
+		"user_id": user.UserID,
+		"email":   user.Email,
+	}).Info("User updated successfully")
 
 	res := dto.UserResponse{
 		ID:      user.UserID,
@@ -224,13 +248,20 @@ func (us *UserService) UpdateUser(ctx context.Context, req dto.UpdateUserRequest
 func (us *UserService) DeleteUser(ctx context.Context, req dto.DeleteUserRequest) (dto.UserResponse, error) {
 	deletedUser, _, err := us.userRepo.GetUserByID(ctx, nil, req.UserID)
 	if err != nil {
+		utils.Log.WithError(err).WithField("user_id", req.UserID).Error("Failed to get user before delete")
 		return dto.UserResponse{}, constants.ErrGetUserByID
 	}
 
 	err = us.userRepo.DeleteUserByID(ctx, nil, req.UserID)
 	if err != nil {
+		utils.Log.WithError(err).WithField("user_id", req.UserID).Error("Failed to delete user")
 		return dto.UserResponse{}, constants.ErrDeleteUserByID
 	}
+
+	utils.Log.WithFields(logrus.Fields{
+		"user_id": deletedUser.UserID,
+		"email":   deletedUser.Email,
+	}).Info("User deleted successfully")
 
 	res := dto.UserResponse{
 		ID:      deletedUser.UserID,

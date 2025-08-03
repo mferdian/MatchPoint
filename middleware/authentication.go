@@ -15,12 +15,14 @@ func Authentication(jwtService service.InterfaceJWTService) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		authHeader := ctx.GetHeader("Authorization")
 		if authHeader == "" {
+			utils.Log.Warn("Authorization header not found")
 			res := utils.BuildResponseFailed(constants.MESSAGE_FAILED_PROSES_REQUEST, constants.MESSAGE_FAILED_TOKEN_NOT_FOUND, nil)
 			ctx.AbortWithStatusJSON(http.StatusUnauthorized, res)
 			return
 		}
 
 		if !strings.HasPrefix(authHeader, "Bearer ") {
+			utils.Log.Warnf("Authorization header inbvalid : %s", authHeader)
 			res := utils.BuildResponseFailed(constants.MESSAGE_FAILED_PROSES_REQUEST, constants.MESSAGE_FAILED_TOKEN_NOT_VALID, nil)
 			ctx.AbortWithStatusJSON(http.StatusUnauthorized, res)
 			return
@@ -30,6 +32,7 @@ func Authentication(jwtService service.InterfaceJWTService) gin.HandlerFunc {
 
 		token, err := jwtService.ValidateToken(tokenStr)
 		if err != nil || !token.Valid {
+			utils.Log.Warnf("Token invalid: %v", err)
 			res := utils.BuildResponseFailed(constants.MESSAGE_FAILED_PROSES_REQUEST, constants.MESSAGE_FAILED_TOKEN_NOT_VALID, nil)
 			ctx.AbortWithStatusJSON(http.StatusUnauthorized, res)
 			return
@@ -37,6 +40,7 @@ func Authentication(jwtService service.InterfaceJWTService) gin.HandlerFunc {
 
 		userID, err := jwtService.GetUserIDByToken(tokenStr)
 		if err != nil {
+			utils.Log.Errorf("failed extrack userID from token: %v", err)
 			res := utils.BuildResponseFailed(constants.MESSAGE_FAILED_PROSES_REQUEST, err.Error(), nil)
 			ctx.AbortWithStatusJSON(http.StatusUnauthorized, res)
 			return
@@ -44,10 +48,13 @@ func Authentication(jwtService service.InterfaceJWTService) gin.HandlerFunc {
 
 		role, err := jwtService.GetRoleByToken(tokenStr)
 		if err != nil {
+			utils.Log.Errorf("failed extrack role from token: %v", err)
 			res := utils.BuildResponseFailed(constants.MESSAGE_FAILED_PROSES_REQUEST, err.Error(), nil)
 			ctx.AbortWithStatusJSON(http.StatusUnauthorized, res)
 			return
 		}
+
+		utils.Log.Infof("Autentikasi successfull - UserID: %s, Role: %s", userID, role)
 
 		ctx.Set("Authorization", tokenStr)
 		ctx.Set("user_id", userID)

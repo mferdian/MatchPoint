@@ -7,6 +7,7 @@ import (
 	"fieldreserve/helpers"
 	"fieldreserve/model"
 	"fieldreserve/repository"
+	"fieldreserve/utils"
 
 	"github.com/google/uuid"
 )
@@ -32,13 +33,17 @@ func NewFieldService(fieldRepo repository.IFieldRepository) *FieldService {
 }
 
 func (fs *FieldService) CreateField(ctx context.Context, req dto.CreateFieldRequest) (dto.FieldResponse, error) {
+	utils.Log.Info("Creating new field")
+
 	imageName, err := helpers.SaveImage(req.FieldImage, "./assets/fields", "field")
 	if err != nil {
+		utils.Log.Errorf("Failed to save image: %v", err)
 		return dto.FieldResponse{}, constants.ErrSaveImages
 	}
 
 	categoryUUID, err := uuid.Parse(req.CategoryID)
 	if err != nil {
+		utils.Log.Errorf("Invalid category UUID: %v", err)
 		return dto.FieldResponse{}, constants.ErrInvalidUUID
 	}
 
@@ -52,8 +57,11 @@ func (fs *FieldService) CreateField(ctx context.Context, req dto.CreateFieldRequ
 	}
 
 	if err := fs.fieldRepo.CreateField(ctx, nil, field); err != nil {
+		utils.Log.Errorf("Failed to create field in repository: %v", err)
 		return dto.FieldResponse{}, err
 	}
+
+	utils.Log.Infof("Field created successfully: %v", field.FieldID)
 
 	return dto.FieldResponse{
 		FieldID:      field.FieldID,
@@ -66,10 +74,15 @@ func (fs *FieldService) CreateField(ctx context.Context, req dto.CreateFieldRequ
 }
 
 func (fs *FieldService) GetAllFieldWithPagination(ctx context.Context, req dto.FieldPaginationRequest) (dto.FieldPaginationResponse, error) {
+	utils.Log.Infof("Fetching all fields with pagination: page=%d, perPage=%d", req.Page, req.PerPage)
+
 	dataWithPaginate, err := fs.fieldRepo.GetAllFieldWithPagination(ctx, nil, req)
 	if err != nil {
+		utils.Log.Errorf("Failed to fetch paginated fields: %v", err)
 		return dto.FieldPaginationResponse{}, constants.ErrGetAllField
 	}
+
+	utils.Log.Infof("Fetched %d fields", len(dataWithPaginate.Fields))
 
 	var datas []dto.FieldResponse
 	for _, field := range dataWithPaginate.Fields {
@@ -97,15 +110,20 @@ func (fs *FieldService) GetAllFieldWithPagination(ctx context.Context, req dto.F
 }
 
 func (fs *FieldService) GetFieldByID(ctx context.Context, fieldID string) (dto.FieldFullResponse, error) {
+	utils.Log.Infof("Fetching field by ID: %s", fieldID)
+
 	if _, err := uuid.Parse(fieldID); err != nil {
+		utils.Log.Errorf("Invalid field UUID: %v", err)
 		return dto.FieldFullResponse{}, constants.ErrInvalidUUID
 	}
 
 	field, _, err := fs.fieldRepo.GetFieldByID(ctx, nil, fieldID)
-
 	if err != nil {
+		utils.Log.Errorf("Failed to fetch field: %v", err)
 		return dto.FieldFullResponse{}, constants.ErrGetFieldByID
 	}
+
+	utils.Log.Infof("Field fetched successfully: %s", fieldID)
 
 	res := dto.FieldFullResponse{
 		FieldID:      field.FieldID,
@@ -124,12 +142,16 @@ func (fs *FieldService) GetFieldByID(ctx context.Context, fieldID string) (dto.F
 }
 
 func (fs *FieldService) UpdateField(ctx context.Context, req dto.UpdateFieldRequest) (dto.FieldResponse, error) {
+	utils.Log.Infof("Updating field: %s", req.FieldID)
+
 	if _, err := uuid.Parse(req.FieldID); err != nil {
+		utils.Log.Errorf("Invalid field UUID: %v", err)
 		return dto.FieldResponse{}, constants.ErrInvalidUUID
 	}
 
 	field, _, err := fs.fieldRepo.GetFieldByID(ctx, nil, req.FieldID)
 	if err != nil {
+		utils.Log.Errorf("Field not found: %v", err)
 		return dto.FieldResponse{}, constants.ErrGetFieldByID
 	}
 
@@ -140,6 +162,7 @@ func (fs *FieldService) UpdateField(ctx context.Context, req dto.UpdateFieldRequ
 		field.FieldAddress = req.FieldAddress
 	}
 	if req.FieldPrice < 0 {
+		utils.Log.Warn("Invalid field price: < 0")
 		return dto.FieldResponse{}, constants.ErrInvalidFieldPrice
 	}
 	if req.FieldPrice != 0 {
@@ -149,14 +172,19 @@ func (fs *FieldService) UpdateField(ctx context.Context, req dto.UpdateFieldRequ
 	if req.FieldImage != nil {
 		imageName, err := helpers.SaveImage(req.FieldImage, "./assets/fields", "field")
 		if err != nil {
+			utils.Log.Errorf("Failed to save new image: %v", err)
 			return dto.FieldResponse{}, constants.ErrSaveImages
 		}
 		field.FieldImage = imageName
 	}
 
 	if err := fs.fieldRepo.UpdateField(ctx, nil, field); err != nil {
+		utils.Log.Errorf("Failed to update field: %v", err)
 		return dto.FieldResponse{}, constants.ErrUpdateField
 	}
+
+	utils.Log.Infof("Field updated successfully: %s", req.FieldID)
+
 	res := dto.FieldResponse{
 		FieldID:      field.FieldID,
 		FieldName:    field.FieldName,
@@ -170,19 +198,26 @@ func (fs *FieldService) UpdateField(ctx context.Context, req dto.UpdateFieldRequ
 }
 
 func (fs *FieldService) DeleteField(ctx context.Context, req dto.DeleteFieldRequest) (dto.FieldResponse, error) {
+	utils.Log.Infof("Deleting field: %s", req.FieldID)
+
 	if _, err := uuid.Parse(req.FieldID); err != nil {
+		utils.Log.Errorf("Invalid UUID for deletion: %v", err)
 		return dto.FieldResponse{}, constants.ErrInvalidUUID
 	}
 
 	deletedField, _, err := fs.fieldRepo.GetFieldByID(ctx, nil, req.FieldID)
 	if err != nil {
+		utils.Log.Errorf("Field not found for deletion: %v", err)
 		return dto.FieldResponse{}, constants.ErrGetFieldByID
 	}
 
 	err = fs.fieldRepo.DeleteField(ctx, nil, req.FieldID)
 	if err != nil {
+		utils.Log.Errorf("Failed to delete field: %v", err)
 		return dto.FieldResponse{}, constants.ErrDeleteFieldByID
 	}
+
+	utils.Log.Infof("Field deleted successfully: %s", req.FieldID)
 
 	res := dto.FieldResponse{
 		FieldID:      deletedField.FieldID,

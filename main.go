@@ -8,7 +8,7 @@ import (
 	"fieldreserve/repository"
 	"fieldreserve/routes"
 	"fieldreserve/service"
-	"log"
+	"fieldreserve/utils" // tambahkan ini
 	"os"
 
 	"github.com/gin-gonic/gin"
@@ -16,21 +16,27 @@ import (
 )
 
 func main() {
-	// Load .env
+	// ==== Set up logger ====
+	utils.SetUpLogger()
+	utils.Log.Info("Logger initialized")
+
+	// ==== Load .env ====
 	if err := godotenv.Load(); err != nil {
-		log.Println("No .env file found")
+		utils.Log.Warn("No .env file found")
 	}
 
-	// DB
+	// ==== Database ====
 	db := database.SetUpPostgreSQLConnection()
 	defer database.ClosePostgreSQLConnection(db)
 
-	// Seeder command
+	// ==== Seeder command ====
 	if len(os.Args) > 1 {
+		utils.Log.WithField("command", os.Args[1]).Info("Seeder command triggered")
 		cmd.Command(db)
 		return
 	}
 
+	// ==== Inisialisasi ====
 	var (
 		jwtService = service.NewJWTService()
 
@@ -46,15 +52,16 @@ func main() {
 		fieldService    = service.NewFieldService(fieldRepo)
 		fieldController = controller.NewFieldController(fieldService)
 
-		scheduleRepo = repository.NewScheduleRepository(db)
-		scheduleService = service.NewScheduleService(scheduleRepo, fieldRepo)
+		scheduleRepo     = repository.NewScheduleRepository(db)
+		scheduleService  = service.NewScheduleService(scheduleRepo, fieldRepo)
 		scheduleController = controller.NewScheduleController(scheduleService)
 
-		bookingRepo = repository.NewBookingRepository(db)
-		bookingService = service.NewBookingService(bookingRepo, jwtService, scheduleRepo, fieldRepo)
+		bookingRepo       = repository.NewBookingRepository(db)
+		bookingService    = service.NewBookingService(bookingRepo, jwtService, scheduleRepo, fieldRepo)
 		bookingController = controller.NewBookingController(bookingService)
 	)
 
+	// ==== Router ====
 	server := gin.Default()
 	server.Use(middleware.CORSMiddleware())
 
@@ -64,6 +71,7 @@ func main() {
 
 	server.Static("/assets", "./assets")
 
+	// ==== Port ====
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8000"
@@ -76,7 +84,9 @@ func main() {
 		serve = ":" + port
 	}
 
+	utils.Log.WithField("address", serve).Info("Starting server...")
+
 	if err := server.Run(serve); err != nil {
-		log.Fatalf("error running server: %v", err)
+		utils.Log.WithError(err).Fatal("Error running server")
 	}
 }
