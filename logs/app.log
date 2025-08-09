@@ -1,0 +1,13 @@
+time="2025-08-09T09:39:13+07:00" level=info msg="Logger initialized"
+time="2025-08-09T09:39:13+07:00" level=info msg="Initializing new BookingService"
+time="2025-08-09T09:39:13+07:00" level=info msg="Starting server..." address=":8000"
+time="2025-08-09T09:39:58+07:00" level=warning msg="Login failed: email not found" email=alice.w@example.com
+time="2025-08-09T09:40:03+07:00" level=info msg="User created successfully" email=alice.w@example.com user_id=a05c79c6-c2ed-4879-9d77-a2efa1605a74
+time="2025-08-09T09:40:08+07:00" level=info msg="User login successful" email=alice.w@example.com user_id=a05c79c6-c2ed-4879-9d77-a2efa1605a74
+time="2025-08-09T09:40:33+07:00" level=info msg="Logger initialized"
+time="2025-08-09T09:40:33+07:00" level=info msg="Initializing new BookingService"
+time="2025-08-09T09:40:33+07:00" level=info msg="Starting server..." address=":8000"
+time="2025-08-09T09:40:53+07:00" level=info msg="Logger initialized"
+time="2025-08-09T09:40:53+07:00" level=info msg="Initializing new BookingService"
+time="2025-08-09T09:40:53+07:00" level=info msg="Starting server..." address=":8000"
+time="2025-08-09T09:41:02+07:00" level=info msg="User login successful" email=alice.w@example.com user_id=a05c79c6-c2ed-4879-9d77-a2efa1605a74

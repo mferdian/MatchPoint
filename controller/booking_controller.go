@@ -34,7 +34,6 @@ func NewBookingController(bookingService service.IBookingService) *BookingContro
 	}
 }
 
-// POST /bookings (User)
 func (bc *BookingController) CreateBooking(ctx *gin.Context) {
 	var payload dto.CreateBookingRequest
 	if err := ctx.ShouldBind(&payload); err != nil {
@@ -54,7 +53,6 @@ func (bc *BookingController) CreateBooking(ctx *gin.Context) {
 	ctx.JSON(http.StatusCreated, res)
 }
 
-// GET /bookings (Admin, Can Get All Booking)
 func (bc *BookingController) GetAllBooking(ctx *gin.Context) {
 	var payload dto.BookingPaginationRequest
 	if err := ctx.ShouldBind(&payload); err != nil {
@@ -74,7 +72,6 @@ func (bc *BookingController) GetAllBooking(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, res)
 }
 
-// Get (user, can get only user History)
 func (bc *BookingController) GetUserBookingHistory(ctx *gin.Context) {
 	var payload dto.BookingPaginationRequest
 	if err := ctx.ShouldBindQuery(&payload); err != nil {
@@ -84,8 +81,6 @@ func (bc *BookingController) GetUserBookingHistory(ctx *gin.Context) {
 	}
 
 	userID := ctx.GetString("user_id")
-	
-	// Inject user ID ke payload
 	payload.UserID = userID
 
 	result, err := bc.bookingService.GetUserBookingHistory(ctx.Request.Context(), payload)
@@ -95,7 +90,6 @@ func (bc *BookingController) GetUserBookingHistory(ctx *gin.Context) {
 		return
 	}
 
-	// Format response pakai utils bawaan kamu
 	res := utils.Response{
 		Status:   true,
 		Messsage: constants.MESSAGE_SUCCESS_GET_ALL_BOOKING,
@@ -106,8 +100,6 @@ func (bc *BookingController) GetUserBookingHistory(ctx *gin.Context) {
 }
 
 
-
-// GET /bookings/:id (user)
 func (bc *BookingController) GetBookingByID(ctx *gin.Context) {
 	bookingID := ctx.Param("id")
 
@@ -129,7 +121,6 @@ func (bc *BookingController) GetBookingByID(ctx *gin.Context) {
 }
 
 
-// PATCH /bookings/:id (Admin)
 func (bc *BookingController) UpdateStatusBooking(ctx *gin.Context) {
 	bookingID := ctx.Param("id")
 
@@ -159,7 +150,6 @@ func (bc *BookingController) UpdateStatusBooking(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, res)
 }
 
-// DELETE /bookings/:id (Admin)
 func (bc *BookingController) DeleteBooking(ctx *gin.Context) {
 	bookingID := ctx.Param("id")
 
@@ -184,7 +174,6 @@ func (bc *BookingController) DeleteBooking(ctx *gin.Context) {
 }
 
 
-// Download invoice 
 func (bc *BookingController) DownloadInvoice(ctx *gin.Context) {
 	bookingID := ctx.Param("id")
 

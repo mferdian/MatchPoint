@@ -52,8 +52,7 @@ type (
 	}
 
 
-	// Paginate
-	
+	// Pagination
 	FieldPaginationRequest struct {
 		PaginationRequest
 		FieldID string `form:"field_id"`

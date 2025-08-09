@@ -11,19 +11,16 @@ import (
 )
 
 func SaveImage(file *multipart.FileHeader, folder string, prefix string) (string, error) {
-	// Pastikan folder tujuan ada
 	if _, err := os.Stat(folder); os.IsNotExist(err) {
 		if err := os.MkdirAll(folder, os.ModePerm); err != nil {
 			return "", err
 		}
 	}
 
-	// Buat nama unik dengan prefix
-	ext := filepath.Ext(file.Filename) // ambil ekstensi file asli (.jpg/.png)
+	ext := filepath.Ext(file.Filename)
 	filename := fmt.Sprintf("%s_%d%s", prefix, time.Now().UnixNano(), ext)
 	fullPath := filepath.Join(folder, filename)
 
-	// Simpan file
 	src, err := file.Open()
 	if err != nil {
 		return "", err

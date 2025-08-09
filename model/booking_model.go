@@ -18,7 +18,6 @@ type Booking struct {
 	ProofPayment  string    `json:"proof_payment"`
 	Status        string    `json:"status"`
 
-	// Status timestamps
 	PaymentUploadedAt *time.Time `json:"payment_uploaded_at"`
 	PaymentVerifiedAt *time.Time `json:"payment_verified_at"`
 	CancelledAt       *time.Time `json:"cancelled_at"`

@@ -9,7 +9,6 @@ import (
 )
 
 type (
-	// Create Booking
 	CreateBookingRequest struct {
 		FieldID       string                `form:"field_id" binding:"required"`
 		BookingDate   string                `form:"booking_date" binding:"required"`
@@ -20,7 +19,6 @@ type (
 		TotalPayment  float64               `form:"total_payment" binding:"required"`
 	}
 
-	// Response Ringkas
 	BookingResponse struct {
 		BookingID         uuid.UUID  `json:"booking_id"`
 		UserID            uuid.UUID  `json:"user_id"`
@@ -45,7 +43,6 @@ type (
 		NoTelp  string    `json:"no_telp"`
 	}
 
-	// Response Lengkap (untuk history / admin)
 	BookingFullResponse struct {
 		BookingID         uuid.UUID            `json:"booking_id"`
 		PaymentMethod     string               `json:"payment_method"`
@@ -63,18 +60,15 @@ type (
 		VerifiedAt        *time.Time           `json:"verified_at,omitempty"`
 	}
 
-	// Update Booking (khusus admin, user tidak bisa update booking)
 	UpdateBookingStatusRequest struct {
 		BookingID string  `json:"-"`
 		Status    *string `json:"status,omitempty"`
 	}
 
-	// Delete Booking
 	DeleteBookingRequest struct {
 		BookingID string `json:"-"`
 	}
 
-	// Pagination Request
 	BookingPaginationRequest struct {
 		PaginationRequest
 		BookingID string `form:"booking_id"`
@@ -83,13 +77,11 @@ type (
 		Status    string `form:"status"`
 	}
 
-	// Pagination Response
 	BookingPaginationResponse struct {
 		PaginationResponse
 		Data []BookingResponse `json:"data"`
 	}
 
-	// Digunakan di Repository
 	BookingPaginationRepositoryResponse struct {
 		PaginationResponse
 		Bookings []model.Booking

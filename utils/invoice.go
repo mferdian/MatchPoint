@@ -14,36 +14,29 @@ func GenerateInvoicePDF(booking dto.BookingFullResponse) ([]byte, error) {
 	pdf := gofpdf.New("P", "mm", "A4", "")
 	pdf.AddPage()
 
-	// Set margins
 	pdf.SetMargins(20, 20, 20)
 
-	// Generate QR code for booking ID
 	qrCode, err := qrcode.Encode(booking.BookingID.String(), qrcode.Medium, 256)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate QR code: %v", err)
 	}
 
-	// Register QR code image
 	qrReader := bytes.NewReader(qrCode)
 	pdf.RegisterImageOptionsReader("qr", gofpdf.ImageOptions{ImageType: "PNG"}, qrReader)
 
-	// Header Section
 	drawHeader(pdf)
 
-	// Invoice Title
 	pdf.SetY(35)
 	pdf.SetFont("Arial", "B", 20)
 	pdf.SetTextColor(41, 128, 185)
 	pdf.CellFormat(0, 15, "INVOICE BOOKING LAPANGAN", "", 1, "C", false, 0, "")
 
-	// Separator line
 	pdf.SetDrawColor(41, 128, 185)
 	pdf.SetLineWidth(0.5)
 	pdf.Line(20, 55, 190, 55)
 
 	pdf.SetY(65)
 
-	// Customer Information Section
 	drawSectionHeader(pdf, "INFORMASI BOOKING")
 
 	pdf.SetTextColor(0, 0, 0)
@@ -67,7 +60,6 @@ func GenerateInvoicePDF(booking dto.BookingFullResponse) ([]byte, error) {
 
 	pdf.Ln(10)
 
-	// Payment Information Section
 	drawSectionHeader(pdf, "INFORMASI PEMBAYARAN")
 
 	pdf.SetFont("Arial", "", 11)
@@ -88,17 +80,15 @@ func GenerateInvoicePDF(booking dto.BookingFullResponse) ([]byte, error) {
 
 	pdf.Ln(10)
 
-	// Total Payment Section
 	drawTotalPaymentSection(pdf, booking.TotalPayment)
 
 	pdf.Ln(10)
 
-	// Draw QR code (big, centered)
-	x := (210 - 60) / 2 // 210mm width, center QR code (60mm)
+	x := (210 - 60) / 2 
 	pdf.ImageOptions("qr", float64(x), pdf.GetY(), 60, 60, false, gofpdf.ImageOptions{ImageType: "PNG"}, 0, "")
 	pdf.Ln(65)
 
-	// Footer
+
 	drawFooter(pdf)
 
 	var buf bytes.Buffer
