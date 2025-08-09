@@ -4,3 +4,4 @@ assets/
 volumes/
 .vscode/
 temp/
+logs/
